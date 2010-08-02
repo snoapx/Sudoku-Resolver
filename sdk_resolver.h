@@ -28,6 +28,7 @@ int sdk_openGrid(const char* path);
 int sdk_resolveGrid();
 int sdk_showGrid();
 
+struct sdk_grid_entry_s sdk_grid [9][9];
 
 #endif
 

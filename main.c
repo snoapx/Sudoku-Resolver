@@ -30,27 +30,24 @@ int main(int argc, char** argv)
 {
   int res;
 
-  if (argc != 2)
+  if (argc != 1)
   {
-    print_usage(argv[0]);
-    return(EXIT_FAILURE);
+    sdk_openGrid(argv[1]);
+    sdk_showGrid();
+
+    res = sdk_resolveGrid();
+    if (res != -1)
+    {
+      fprintf(stderr, "\n\nSolution found !\n");
+      sdk_showGrid();
+      fprintf(stderr, "Resolved with %d computations\n", res);
+      return(EXIT_SUCCESS);
+    } else {
+      fprintf(stderr, "No solution found !\n");
+      return(EXIT_FAILURE);
+    }
   }
 
   sdk_gui_init(argc, argv);
-
-  sdk_openGrid(argv[1]);
-  sdk_showGrid();
-
-  res = sdk_resolveGrid();
-  if (res != -1)
-  {
-    fprintf(stderr, "\n\nSolution found !\n");
-    sdk_showGrid();
-    fprintf(stderr, "Resolved with %d computations\n", res);
-    return(EXIT_SUCCESS);
-  } else {
-    fprintf(stderr, "No solution found !\n");
-    return(EXIT_FAILURE);
-  }
 }
 

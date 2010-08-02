@@ -16,7 +16,7 @@
  */
 
 void
-  sdk_gui_load_grid(struct sdk_grid_entry_s* grid);
+  sdk_gui_load_grid();
 
 int
   sdk_gui_init(int argc, char **argv);

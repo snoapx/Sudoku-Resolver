@@ -25,7 +25,6 @@
 
 #define BUFF 64
 #define ERROR_BUF 256
-struct sdk_grid_entry_s sdk_grid [9][9];
 
 static int sdk_errno()
 {
@@ -95,8 +94,7 @@ static int check_constrains(const int i, const int j)
   int k, l;
   int i2, j2;
 
-//  fprintf(stderr, "Check constrains\n");
-  /* lines */
+  /* lines constrains */
   for(k=0; k<9; ++k)
   {
     if (k != j)
@@ -107,7 +105,7 @@ static int check_constrains(const int i, const int j)
     }
   }
 
-  /* rows */
+  /* rows constrains */
   for(k=0; k<9; ++k)
   {
     if (k != i)
@@ -117,7 +115,7 @@ static int check_constrains(const int i, const int j)
     }
   }
 
-  /* 3x3 square */
+  /* 3x3 square constrains */
   i2 = i/3 * 3;
   j2 = j/3 * 3;
 
@@ -134,8 +132,6 @@ static int check_constrains(const int i, const int j)
       }
     }
   }
-
-//  fprintf(stderr, "Constrains OK\n");
   return 1;
 }
 
