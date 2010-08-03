@@ -131,12 +131,13 @@ static void showNewFile()
   resetGrid();
 }
 
-static void showConsole()
+static void showConsole(gpointer callback_data,
+    guint callback_action, GtkWidget *menu_item)
 {
-  if (gtk_widget_get_visible(scroll))
-    gtk_widget_hide(scroll);
-  else
+  if(GTK_CHECK_MENU_ITEM(menu_item)->active)
     gtk_widget_show(scroll);
+  else
+    gtk_widget_hide(scroll);
 }
 
 static void showGenerateGrid()
@@ -157,20 +158,20 @@ static void setGridEditable(int boolean)
 
 static GtkItemFactoryEntry menu_items[] = {
   {"/File", NULL, NULL, 0, "<Branch>"},
-  {"/File/New", NULL, showNewFile, 0, NULL},
-  {"/File/Generate grid", NULL, showGenerateGrid, 0, NULL},
-  {"/File/Open", NULL, showOpenFile, 0, NULL},
-  {"/File/Save", NULL, NULL, 0, NULL},
+  {"/File/New", NULL, showNewFile, 0, "<StockItem>", GTK_STOCK_NEW},
+  {"/File/Generate grid", NULL, showGenerateGrid, 0, "<StockItem>", GTK_STOCK_EXECUTE},
+  {"/File/Open", NULL, showOpenFile, 0, "<StockItem>", GTK_STOCK_OPEN},
+  {"/File/Save", NULL, NULL, 0, "<StockItem>", GTK_STOCK_SAVE},
   {"/File/sep1", NULL, NULL, 0, "<Separator>"},
-  {"/File/Quit", NULL, gtk_main_quit, 0, NULL},
+  {"/File/Quit", NULL, gtk_main_quit, 0, "<StockItem>", GTK_STOCK_QUIT},
 
-  {"/Option", NULL, NULL, 0, "<Branch>"},
-  {"/Option/Show console", NULL, showConsole, 0, "<CheckItem>"},
-  {"/Option/Edit Grid", NULL, setGridEditable, 0, "<CheckItem>"},
+  {"/Options", NULL, NULL, 0, "<Branch>"},
+  {"/Options/Show console", NULL, showConsole, 0, "<CheckItem>"},
+  {"/Options/Edit Grid", NULL, setGridEditable, 0, "<CheckItem>"},
 
   {"/Help", NULL, NULL, 0, "<Branch>"},
-  {"/Help/Manual", NULL, NULL, 0, NULL},
-  {"/Help/About", NULL, showAbout, 0, NULL},
+  {"/Help/Manual", NULL, NULL, 0, "<StockItem>", GTK_STOCK_HELP},
+  {"/Help/About", NULL, showAbout, 0, "<StockItem>", GTK_STOCK_ABOUT}
 };
 
 
