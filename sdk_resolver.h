@@ -63,19 +63,25 @@ GNU General Public License for more details.\n\
 You should have received a copy of the GNU General Public License\n\
 along with this program.  If not, see <http://www.gnu.org/licenses/>."
 
-
+/* ERRORS */
+#define SDK_ERR_FILE_NOT_FOUND 1
+#define SDK_ERR_WRONG_GRID_FORMAT 2
+#define SDK_ERR_UNKNOWN_CHAR 3
 
 struct sdk_grid_entry_s
 {
+  int i;
+  int j;
+
   int value;
+
   int isBase;
+  int possibleValues[10];
 };
 
-int sdk_openGrid(const char* path);
-int sdk_resolveGrid();
+void sdk_resolveGrid(struct sdk_grid_entry_s grid[][9], int* nb_solutions, int* nb_computations);
+int sdk_openGrid(const char* path, struct sdk_grid_entry_s grid[][9]);
 int sdk_showGrid();
-
-struct sdk_grid_entry_s sdk_grid [9][9];
 
 #endif
 

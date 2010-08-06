@@ -43,15 +43,33 @@ static GtkTextBuffer* console_buff = NULL;
 static GtkWidget* scroll = NULL;
 static GtkWidget* dialog = NULL;
 static GtkWidget* dialog_label = NULL;
+static struct sdk_grid_entry_s sdk_grid[9][9];
 
+static void showDialogBox(char* txt, int error)
+{
+  GtkWidget *dialog, *label, *okay_button;
+
+  /*  Create the widgets */
+  dialog = gtk_dialog_new();
+  label = gtk_label_new (txt);
+  okay_button = gtk_button_new_with_label("OK");
+
+  /*  Ensure that the dialog box is destroyed when the user clicks
+   *  ok. */
+  gtk_signal_connect_object(GTK_OBJECT (okay_button), "clicked", G_CALLBACK(gtk_widget_destroy), GTK_OBJECT(dialog));
+  gtk_container_add (GTK_CONTAINER (GTK_DIALOG(dialog)->action_area), okay_button);
+
+  /*  Add the label, and show everything we've added to the
+   *  dialog. */
+  gtk_container_add (GTK_CONTAINER (GTK_DIALOG(dialog)->vbox), label);
+  gtk_widget_show_all (dialog);
+}
 
 /*-----------------------------------------------------------------------------
  *  Menu bar entries
  *-----------------------------------------------------------------------------*/
 
-/* *
- * Open an About dialog box
- * */
+/* show an about dialog box */
 static void showAbout()
 {
   GtkWidget* about = NULL;
@@ -72,6 +90,7 @@ static void showAbout()
       NULL);
 }
 
+/* append a line to the program's console */
 static void appendConsole(char* txt)
 {
   GtkTextIter ei;
@@ -80,14 +99,13 @@ static void appendConsole(char* txt)
   gtk_text_buffer_insert(console_buff, &ei, txt, -1);
 }
 
-/* *
- * Open a OpenFile dialog box
- * */
+/* open a file */
 static void showOpenFile()
 {
   GtkWidget* file_chooser;
   gchar* selected_filename;
   char buff[256];
+  int error;
 
   file_chooser = gtk_file_chooser_dialog_new("Open a grid file",
       NULL,
@@ -98,22 +116,26 @@ static void showOpenFile()
 
   gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (file_chooser), "grids/");
 
-
   if (gtk_dialog_run (GTK_DIALOG (file_chooser)) == GTK_RESPONSE_ACCEPT)
   {
     selected_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_chooser));
     g_print ("Selected filename: %s\n", selected_filename);
 
-    sdk_openGrid((char*) selected_filename);
+    if (error = sdk_openGrid((char*) selected_filename, sdk_grid) != 0)
+    {
+      showDialogBox("Cannot open !", error);
+    } else {
+      sprintf(buff, "Grid %s opened!\n", selected_filename);
+      sdk_gui_load_grid();
+      appendConsole(buff);
+    }
 
-    sprintf(buff, "Grid %s opened!\n", selected_filename);
-    sdk_gui_load_grid();
-    appendConsole(buff);
     g_free (selected_filename);
   }
   gtk_widget_destroy (file_chooser);
 }
 
+/* reset all grid's entries to char "" */
 static void resetGrid()
 {
   int i;
@@ -216,11 +238,9 @@ static void createGridResults()
 }
 
 
-/*
- * ===  FUNCTION  ======================================================================
- *         Name:  sdk_gui_load_grid
- *  Description:  Load a grid into the gui
- * =====================================================================================
+/**
+ *  sdk_gui_load_grid()
+ * @brief Load a Sudoku grid and init all sdk's entries
  */
   void
 sdk_gui_load_grid()
@@ -249,9 +269,10 @@ void resolveGrid()
 {
   char buff[256];
   int nb_computations;
+  int nb_solutions;
 
-  nb_computations = sdk_resolveGrid();
-  if (nb_computations != -1)
+  sdk_resolveGrid(sdk_grid, &nb_computations, &nb_solutions);
+  if (nb_solutions != 0)
   {
     sprintf(buff, "Solution found in %d computations!\n", nb_computations);
     showGridResults(buff);
@@ -267,6 +288,10 @@ void resolveGrid()
 }
 
 
+/**
+ *  sdk_gui_init()
+ * @brief Initialize the Sudoku Resolver gui
+ */
 int sdk_gui_init(int argc, char **argv)
 {
   /*  Variables */
@@ -277,9 +302,7 @@ int sdk_gui_init(int argc, char **argv)
   GtkWidget* vbox = NULL;
   GtkWidget* resolve_btn = NULL;
   GtkWidget* console = NULL;
-
   char welcome_msg[256];
-
   int i, j;
   int count = 0;
 
@@ -293,6 +316,7 @@ int sdk_gui_init(int argc, char **argv)
   gtk_window_set_resizable(GTK_WINDOW(MainWindow), FALSE);
 
   table = gtk_table_new(9,9,TRUE);
+  gtk_container_set_border_width(GTK_CONTAINER(table), 10);
   for(i=0; i<9; ++i)
   {
     for(j=0; j<9; ++j)
@@ -337,7 +361,6 @@ int sdk_gui_init(int argc, char **argv)
   /* Signals */
   g_signal_connect(G_OBJECT(MainWindow), "delete-event", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT(resolve_btn), "clicked", G_CALLBACK(resolveGrid), NULL);
-
 
   /*  Affichage et boucle évènementielle */
   gtk_widget_show_all(MainWindow);

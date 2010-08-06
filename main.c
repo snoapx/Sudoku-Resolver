@@ -29,21 +29,22 @@ void print_usage(char* prog_name)
 int main(int argc, char** argv)
 {
   int res;
+  int nb_solutions = 0;
+  int nb_computations = 0;
+  struct sdk_grid_entry_s sdk_grid [9][9];
 
   if (argc != 1)
   {
-    sdk_openGrid(argv[1]);
+    sdk_openGrid(argv[1], sdk_grid);
     sdk_showGrid();
 
-    res = sdk_resolveGrid();
-    if (res != -1)
+    sdk_resolveGrid(sdk_grid, &nb_solutions, &nb_computations);
+
+    if (nb_solutions != 0)
     {
-      fprintf(stderr, "\n\nSolution found !\n");
-      sdk_showGrid();
-      fprintf(stderr, "Resolved with %d computations\n", res);
+      fprintf(stderr, "%d solutions found in %d computations\n", nb_solutions, nb_computations);
       return(EXIT_SUCCESS);
     } else {
-      fprintf(stderr, "No solution found !\n");
       return(EXIT_FAILURE);
     }
   }

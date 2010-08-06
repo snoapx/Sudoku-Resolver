@@ -1,5 +1,5 @@
 export CC=gcc
-export CFLAGS=`pkg-config --cflags --libs gtk+-2.0` -g
+export CFLAGS=`pkg-config --cflags --libs gtk+-2.0` -g -O3
 EXEC=sdk_resolver
 
 all:sdk_resolver
