@@ -44,6 +44,7 @@ static GtkWidget* scroll = NULL;
 static GtkWidget* dialog = NULL;
 static GtkWidget* dialog_label = NULL;
 static struct sdk_grid_entry_s sdk_grid[9][9];
+static struct sdk_grid_entry_s sdk_result[9][9];
 
 static void showDialogBox(char* txt, int error)
 {
@@ -63,6 +64,29 @@ static void showDialogBox(char* txt, int error)
    *  dialog. */
   gtk_container_add (GTK_CONTAINER (GTK_DIALOG(dialog)->vbox), label);
   gtk_widget_show_all (dialog);
+}
+
+
+/*-----------------------------------------------------------------------------
+ *  Progress Bar
+ *-----------------------------------------------------------------------------*/
+static void initProgressBar(GtkWidget* pb)
+{
+  GtkWidget* popup;
+
+  popup = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+
+  gtk_progress_bar_new_with_adjustment(GTK_PROGRESS_BAR(pb));
+}
+
+static void closeProgressBar(GtkWidget* pb)
+{
+
+}
+
+static void updateProgressBar()
+{
+
 }
 
 /*-----------------------------------------------------------------------------
@@ -121,12 +145,12 @@ static void showOpenFile()
     selected_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_chooser));
     g_print ("Selected filename: %s\n", selected_filename);
 
-    if (error = sdk_openGrid((char*) selected_filename, sdk_grid) != 0)
+    if ((error = sdk_openGrid((char*) selected_filename, sdk_grid)) != 0)
     {
       showDialogBox("Cannot open !", error);
     } else {
       sprintf(buff, "Grid %s opened!\n", selected_filename);
-      sdk_gui_load_grid();
+      sdk_gui_load_grid(sdk_grid);
       appendConsole(buff);
     }
 
@@ -164,7 +188,9 @@ static void showConsole(gpointer callback_data,
 
 static void showGenerateGrid()
 {
-  //TODO
+  sdk_generateGrid(sdk_grid, NULL);
+  sdk_gui_load_grid(sdk_grid);
+  appendConsole("New grid generated!\n");
 }
 
 static void setGridEditable(int boolean)
@@ -243,7 +269,7 @@ static void createGridResults()
  * @brief Load a Sudoku grid and init all sdk's entries
  */
   void
-sdk_gui_load_grid()
+sdk_gui_load_grid(struct sdk_grid_entry_s grid[][9])
 {
   int i, j;
   int count = 0;
@@ -253,11 +279,11 @@ sdk_gui_load_grid()
   {
     for (j=0; j<9; ++j)
     {
-      if (sdk_grid[i][j].value == 0)
+      if (grid[i][j].value == 0)
         gtk_entry_set_text(GTK_ENTRY(gui_grid_entries[count]), "");
       else
       {
-        sprintf(num, "%d", sdk_grid[i][j].value);
+        sprintf(num, "%d", grid[i][j].value);
         gtk_entry_set_text(GTK_ENTRY(gui_grid_entries[count]), num);
       }
       ++count;
@@ -271,12 +297,12 @@ void resolveGrid()
   int nb_computations;
   int nb_solutions;
 
-  sdk_resolveGrid(sdk_grid, &nb_computations, &nb_solutions);
+  sdk_resolveGrid(sdk_grid, sdk_result, &nb_computations, &nb_solutions, 0);
   if (nb_solutions != 0)
   {
     sprintf(buff, "Solution found in %d computations!\n", nb_computations);
     showGridResults(buff);
-    sdk_gui_load_grid();
+    sdk_gui_load_grid(sdk_result);
   }
   else
   {

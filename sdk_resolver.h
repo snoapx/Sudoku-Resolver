@@ -68,6 +68,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>."
 #define SDK_ERR_WRONG_GRID_FORMAT 2
 #define SDK_ERR_UNKNOWN_CHAR 3
 
+#ifdef __GNUC__
+#define UNUSED __attribute__ ((unused))
+#else
+#define UNUSED
+#endif
+
 struct sdk_grid_entry_s
 {
   int i;
@@ -79,9 +85,11 @@ struct sdk_grid_entry_s
   int possibleValues[10];
 };
 
-void sdk_resolveGrid(struct sdk_grid_entry_s grid[][9], int* nb_solutions, int* nb_computations);
+void sdk_resolveGrid(struct sdk_grid_entry_s grid[][9], struct sdk_grid_entry_s result[][9], int* nb_solutions, int* nb_computations, int one_solution);
+void sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)());
+
 int sdk_openGrid(const char* path, struct sdk_grid_entry_s grid[][9]);
-int sdk_showGrid();
+void sdk_showGrid();
 
 #endif
 

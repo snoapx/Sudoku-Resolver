@@ -28,7 +28,6 @@ void print_usage(char* prog_name)
 
 int main(int argc, char** argv)
 {
-  int res;
   int nb_solutions = 0;
   int nb_computations = 0;
   struct sdk_grid_entry_s sdk_grid [9][9];
@@ -36,11 +35,15 @@ int main(int argc, char** argv)
   if (argc != 1)
   {
     sdk_openGrid(argv[1], sdk_grid);
-    sdk_showGrid();
+    sdk_showGrid(sdk_grid);
 
-    sdk_resolveGrid(sdk_grid, &nb_solutions, &nb_computations);
+    sdk_resolveGrid(sdk_grid, NULL, &nb_solutions, &nb_computations, 0);
+    sdk_showGrid(sdk_grid);
 
-    if (nb_solutions != 0)
+    sdk_generateGrid(sdk_grid, NULL);
+    sdk_showGrid(sdk_grid);
+
+      if (nb_solutions != 0)
     {
       fprintf(stderr, "%d solutions found in %d computations\n", nb_solutions, nb_computations);
       return(EXIT_SUCCESS);
@@ -50,5 +53,5 @@ int main(int argc, char** argv)
   }
 
   sdk_gui_init(argc, argv);
+  return(EXIT_SUCCESS);
 }
-
