@@ -323,14 +323,13 @@ sdk_resolveGrid(struct sdk_grid_entry_s grid[][9],
 }
 
 void
-sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)())
+sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int))
 {
   int i,j;
   int nb_solutions = 0;
   int nb_computations = 0;
   struct sdk_grid_entry_s tmp_grid [9][9];
   int path[81];
-
 
   srand(time(NULL));
   for(i=0; i<9; ++i)
@@ -355,6 +354,8 @@ sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)())
   for(i=0; i<81; ++i)
   {
     fprintf(stderr, ".");
+    func(i);
+
     nb_solutions = 0;
     nb_computations = 0;
 
@@ -378,6 +379,37 @@ sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)())
 
   //TODO Check solutions number
   fprintf(stderr, "Number of solutions : %d\n", nb_solutions);
+}
+
+/**
+ *  sdk_openGrid()
+ * @brief Save a Sudoku grid into a file
+ */
+int
+sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9])
+{
+  FILE* grid_fd = NULL;
+  int i = 0;
+  char line[BUFF];
+
+  if ((grid_fd = fopen(path, "w")) == NULL)
+    return SDK_ERR_FILE_NOT_FOUND;
+  fprintf(stderr, "Save file %s\n", path);
+
+  while (i < 9)
+  {
+    sprintf(line, "%d %d %d %d %d %d %d %d %d\n",
+        grid[i][0].value, grid[i][1].value, grid[i][2].value,
+        grid[i][3].value, grid[i][4].value, grid[i][5].value,
+        grid[i][6].value, grid[i][7].value, grid[i][8].value);
+
+    fputs(line, grid_fd);
+
+    ++i;
+  }
+  fclose(grid_fd);
+
+  return 0;
 }
 
 /**
@@ -420,11 +452,11 @@ sdk_openGrid(const char* path, struct sdk_grid_entry_s grid[][9])
       grid[i][j].j = j;
 
       fillPossibleValues(&grid[i][j]);
-//      showPossibleValues(&sdk_grid[i][j]);
       ++j;
     }
     ++i;
   }
 
+  fclose(grid_fd);
   return 0;
 }

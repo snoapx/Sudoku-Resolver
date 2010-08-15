@@ -43,6 +43,9 @@ static GtkTextBuffer* console_buff = NULL;
 static GtkWidget* scroll = NULL;
 static GtkWidget* dialog = NULL;
 static GtkWidget* dialog_label = NULL;
+static GtkWidget* MainWindow = NULL;
+static GtkWidget* popup = NULL;
+static GtkWidget *progress_bar;
 static struct sdk_grid_entry_s sdk_grid[9][9];
 static struct sdk_grid_entry_s sdk_result[9][9];
 
@@ -66,27 +69,50 @@ static void showDialogBox(char* txt, int error)
   gtk_widget_show_all (dialog);
 }
 
+/* append a line to the program's console */
+static void appendConsole(char* txt)
+{
+  GtkTextIter ei;
+
+  gtk_text_buffer_get_end_iter(console_buff, &ei);
+  gtk_text_buffer_insert(console_buff, &ei, txt, -1);
+}
+
 
 /*-----------------------------------------------------------------------------
  *  Progress Bar
  *-----------------------------------------------------------------------------*/
-static void initProgressBar(GtkWidget* pb)
+static void closeProgressBar()
 {
-  GtkWidget* popup;
-
-  popup = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-
-  gtk_progress_bar_new_with_adjustment(GTK_PROGRESS_BAR(pb));
+  gtk_widget_hide_all(popup);
 }
 
-static void closeProgressBar(GtkWidget* pb)
+static void updateProgressBar(int i)
 {
-
+  gtk_progress_set_value (GTK_PROGRESS (progress_bar), i);
+  while (gtk_events_pending())
+    gtk_main_iteration();
 }
 
-static void updateProgressBar()
+static void initProgressBar()
 {
+  GtkWidget *label, *content_area;
+  GtkAdjustment *adj;
 
+  popup = gtk_dialog_new_with_buttons("Waiting...", GTK_WINDOW(MainWindow), GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT, NULL);
+  content_area = gtk_dialog_get_content_area(GTK_DIALOG(popup));
+
+
+  adj = (GtkAdjustment *) gtk_adjustment_new (0, 0, 80, 0, 0, 0);
+  progress_bar = gtk_progress_bar_new_with_adjustment (adj);
+
+  label = gtk_label_new("The Sudoku grid is generating...");
+  gtk_container_add(GTK_CONTAINER(content_area), label);
+  gtk_container_add(GTK_CONTAINER(content_area), progress_bar);
+
+  gtk_widget_show_all(popup);
+  while (gtk_events_pending())
+    gtk_main_iteration();
 }
 
 /*-----------------------------------------------------------------------------
@@ -114,14 +140,42 @@ static void showAbout()
       NULL);
 }
 
-/* append a line to the program's console */
-static void appendConsole(char* txt)
+/* open a file */
+static void showSaveFile()
 {
-  GtkTextIter ei;
+  GtkWidget* file_chooser;
+  gchar* selected_filename;
+  char buff[256];
+  int error;
 
-  gtk_text_buffer_get_end_iter(console_buff, &ei);
-  gtk_text_buffer_insert(console_buff, &ei, txt, -1);
+  file_chooser = gtk_file_chooser_dialog_new("Save a grid file",
+      NULL,
+      GTK_FILE_CHOOSER_ACTION_SAVE,
+      GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+      GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT,
+      NULL);
+
+  gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (file_chooser), "grids/");
+
+  if (gtk_dialog_run (GTK_DIALOG (file_chooser)) == GTK_RESPONSE_ACCEPT)
+  {
+    selected_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_chooser));
+    g_print ("Selected filename: %s\n", selected_filename);
+
+    if ((error = sdk_saveGrid((char*) selected_filename, sdk_grid)) != 0)
+    {
+      showDialogBox("Cannot save the file!", error);
+    } else {
+      sprintf(buff, "Grid %s opened!\n", selected_filename);
+      sdk_gui_load_grid(sdk_grid);
+      appendConsole(buff);
+    }
+
+    g_free (selected_filename);
+  }
+  gtk_widget_destroy (file_chooser);
 }
+
 
 /* open a file */
 static void showOpenFile()
@@ -147,7 +201,7 @@ static void showOpenFile()
 
     if ((error = sdk_openGrid((char*) selected_filename, sdk_grid)) != 0)
     {
-      showDialogBox("Cannot open !", error);
+      showDialogBox("Cannot open the file!", error);
     } else {
       sprintf(buff, "Grid %s opened!\n", selected_filename);
       sdk_gui_load_grid(sdk_grid);
@@ -188,9 +242,12 @@ static void showConsole(gpointer callback_data,
 
 static void showGenerateGrid()
 {
-  sdk_generateGrid(sdk_grid, NULL);
+  initProgressBar();
+
+  sdk_generateGrid(sdk_grid, updateProgressBar);
   sdk_gui_load_grid(sdk_grid);
   appendConsole("New grid generated!\n");
+  closeProgressBar();
 }
 
 static void setGridEditable(int boolean)
@@ -209,7 +266,7 @@ static GtkItemFactoryEntry menu_items[] = {
   {"/File/New", NULL, showNewFile, 0, "<StockItem>", GTK_STOCK_NEW},
   {"/File/Generate grid", NULL, showGenerateGrid, 0, "<StockItem>", GTK_STOCK_EXECUTE},
   {"/File/Open", NULL, showOpenFile, 0, "<StockItem>", GTK_STOCK_OPEN},
-  {"/File/Save", NULL, NULL, 0, "<StockItem>", GTK_STOCK_SAVE},
+  {"/File/Save", NULL, showSaveFile, 0, "<StockItem>", GTK_STOCK_SAVE},
   {"/File/sep1", NULL, NULL, 0, "<Separator>"},
   {"/File/Quit", NULL, gtk_main_quit, 0, "<StockItem>", GTK_STOCK_QUIT},
 
@@ -321,7 +378,6 @@ void resolveGrid()
 int sdk_gui_init(int argc, char **argv)
 {
   /*  Variables */
-  GtkWidget* MainWindow = NULL;
   GtkWidget* table = NULL;
   GtkWidget* txt = NULL;
   GtkWidget* menubar = NULL;

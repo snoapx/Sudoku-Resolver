@@ -39,7 +39,7 @@
 #define XSTR(s) STR(s)
 #define SDK_VERSION_MAJOR 1
 #define SDK_VERSION_MINOR 0
-#define SDK_VERSION_RC 1
+#define SDK_VERSION_RC 2
 #define SDK_VERSION XSTR(SDK_VERSION_MAJOR)"."XSTR(SDK_VERSION_MINOR)"-rc"XSTR(SDK_VERSION_RC)
 
 #define SDK_COMPILE_DATE __DATE__
@@ -85,10 +85,13 @@ struct sdk_grid_entry_s
   int possibleValues[10];
 };
 
+
+
 void sdk_resolveGrid(struct sdk_grid_entry_s grid[][9], struct sdk_grid_entry_s result[][9], int* nb_solutions, int* nb_computations, int one_solution);
-void sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)());
+void sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int));
 
 int sdk_openGrid(const char* path, struct sdk_grid_entry_s grid[][9]);
+int sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9]);
 void sdk_showGrid();
 
 #endif
