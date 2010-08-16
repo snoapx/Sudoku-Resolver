@@ -85,13 +85,17 @@ struct sdk_grid_entry_s
   int possibleValues[10];
 };
 
+typedef enum {
+  SDK_FILE_FORMAT_LATEX,
+  SDK_FILE_FORMAT_TEXT
+} sdk_file_format;
 
 
 void sdk_resolveGrid(struct sdk_grid_entry_s grid[][9], struct sdk_grid_entry_s result[][9], int* nb_solutions, int* nb_computations, int one_solution);
 void sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int));
 
 int sdk_openGrid(const char* path, struct sdk_grid_entry_s grid[][9]);
-int sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9]);
+int sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9], sdk_file_format format);
 void sdk_showGrid();
 
 #endif

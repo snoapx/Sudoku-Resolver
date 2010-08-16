@@ -386,26 +386,70 @@ sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int))
  * @brief Save a Sudoku grid into a file
  */
 int
-sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9])
+sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9], sdk_file_format format)
 {
   FILE* grid_fd = NULL;
   int i = 0;
+  int j;
   char line[BUFF];
 
   if ((grid_fd = fopen(path, "w")) == NULL)
     return SDK_ERR_FILE_NOT_FOUND;
   fprintf(stderr, "Save file %s\n", path);
 
-  while (i < 9)
+  switch(format)
   {
-    sprintf(line, "%d %d %d %d %d %d %d %d %d\n",
-        grid[i][0].value, grid[i][1].value, grid[i][2].value,
-        grid[i][3].value, grid[i][4].value, grid[i][5].value,
-        grid[i][6].value, grid[i][7].value, grid[i][8].value);
+    case SDK_FILE_FORMAT_TEXT:
+      while (i < 9)
+      {
+        sprintf(line, "%d %d %d %d %d %d %d %d %d\n",
+            grid[i][0].value, grid[i][1].value, grid[i][2].value,
+            grid[i][3].value, grid[i][4].value, grid[i][5].value,
+            grid[i][6].value, grid[i][7].value, grid[i][8].value);
 
-    fputs(line, grid_fd);
+        fputs(line, grid_fd);
 
-    ++i;
+        ++i;
+      }
+      break;
+    case SDK_FILE_FORMAT_LATEX:
+
+      fputs("\\documentclass[12pt,a4paper]{article}", grid_fd);
+      fputs("\\begin{document}\n", grid_fd);
+      fputs("\\begin{tabular}{||c|c|c||c|c|c||c|c|c||}\n\\hline\\hline\n", grid_fd);
+      while(i < 9)
+      {
+        j = 0;
+        while(j < 9)
+        {
+          if (grid[i][j].value != 0)
+            sprintf(line, "%d", grid[i][j].value);
+          else
+            sprintf(line, " ");
+          fputs(line, grid_fd);
+
+          if (j != 8)
+          {
+            fputs("&", grid_fd);
+          }
+          else
+          {
+            fputs(" \\\\\n", grid_fd);
+          }
+          ++j;
+        }
+
+        if ((i+1)%3)
+          fputs("\\hline\n", grid_fd);
+        else
+          fputs("\\hline\\hline\n", grid_fd);
+
+        ++i;
+      }
+      fputs("\\end{tabular}\n", grid_fd);
+      fputs("\\end{document}", grid_fd);
+      break;
+
   }
   fclose(grid_fd);
 
@@ -416,7 +460,7 @@ sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9])
  *  sdk_openGrid()
  * @brief Open a Sudoku grid file
  */
-int
+  int
 sdk_openGrid(const char* path, struct sdk_grid_entry_s grid[][9])
 {
   FILE* grid_fd = NULL;

@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <gtk/gtk.h>
 #include <sdk_resolver.h>
+#include <string.h>
 #include "sdk_gui.h"
 
 static GtkWidget* gui_grid_entries[9*9];
@@ -140,12 +141,14 @@ static void showAbout()
       NULL);
 }
 
+
 /* open a file */
-static void showSaveFile()
+static void showSaveFile(gpointer callback_data, guint callback_action, GtkWidget *widget)
 {
   GtkWidget* file_chooser;
   gchar* selected_filename;
   char buff[256];
+  GtkFileFilter *filter;
   int error;
 
   file_chooser = gtk_file_chooser_dialog_new("Save a grid file",
@@ -154,21 +157,40 @@ static void showSaveFile()
       GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
       GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT,
       NULL);
+  filter = gtk_file_filter_new();
+  gtk_file_filter_add_pattern(filter, "*.sdk");
+  gtk_file_filter_add_pattern(filter, "*.tex");
+  gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(file_chooser), filter);
+
 
   gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (file_chooser), "grids/");
 
   if (gtk_dialog_run (GTK_DIALOG (file_chooser)) == GTK_RESPONSE_ACCEPT)
   {
     selected_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_chooser));
-    g_print ("Selected filename: %s\n", selected_filename);
 
-    if ((error = sdk_saveGrid((char*) selected_filename, sdk_grid)) != 0)
+    g_print ("Selected filename: %s\n", selected_filename);
+    if (strstr(selected_filename, ".sdk") != NULL)
     {
-      showDialogBox("Cannot save the file!", error);
-    } else {
-      sprintf(buff, "Grid %s opened!\n", selected_filename);
-      sdk_gui_load_grid(sdk_grid);
-      appendConsole(buff);
+      if ((error = sdk_saveGrid((char*) selected_filename, sdk_grid, SDK_FILE_FORMAT_TEXT)) != 0)
+      {
+        showDialogBox("Cannot save the file!", error);
+      } else {
+        sprintf(buff, "Grid %s opened!\n", selected_filename);
+        sdk_gui_load_grid(sdk_grid);
+        appendConsole(buff);
+      }
+    }
+    else if(strstr(selected_filename, ".tex"))
+    {
+      if ((error = sdk_saveGrid((char*) selected_filename, sdk_grid, SDK_FILE_FORMAT_LATEX)) != 0)
+      {
+        showDialogBox("Cannot save the file!", error);
+      } else {
+        sprintf(buff, "Grid %s opened!\n", selected_filename);
+        sdk_gui_load_grid(sdk_grid);
+        appendConsole(buff);
+      }
     }
 
     g_free (selected_filename);
@@ -183,6 +205,7 @@ static void showOpenFile()
   GtkWidget* file_chooser;
   gchar* selected_filename;
   char buff[256];
+  GtkFileFilter *filter;
   int error;
 
   file_chooser = gtk_file_chooser_dialog_new("Open a grid file",
@@ -191,6 +214,10 @@ static void showOpenFile()
       GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
       GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
       NULL);
+  filter = gtk_file_filter_new();
+  gtk_file_filter_add_pattern(filter, "*.sdk");
+  gtk_file_filter_add_pattern(filter, "*.tex");
+  gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(file_chooser), filter);
 
   gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (file_chooser), "grids/");
 
