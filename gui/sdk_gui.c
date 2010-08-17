@@ -57,6 +57,7 @@ static GdkColor c_light_gray = { 10, 0xdddd, 0xdddd, 0xdddd };
 static GdkColor c_dark_gray = { 10, 0xaaaa, 0xaaaa, 0xaaaa };
 static GdkColor c_red= { 10, 0xffff, 0xaaaa, 0xaaaa};
 static GdkColor c_white= { 10, 0xffff, 0xffff, 0xffff};
+static GdkColor c_dark= { 10, 0x6666, 0x6666, 0x6666};
 
 static void showDialogBox(char* txt, int error)
 {
@@ -184,7 +185,7 @@ static void showSaveFile(gpointer callback_data, guint callback_action, GtkWidge
       {
         showDialogBox("Cannot save the file!", error);
       } else {
-        sprintf(buff, "Grid %s opened!\n", selected_filename);
+        sprintf(buff, "Grid saved as text format at %s!\n", selected_filename);
         sdk_gui_load_grid(sdk_grid);
         appendConsole(buff);
       }
@@ -195,7 +196,7 @@ static void showSaveFile(gpointer callback_data, guint callback_action, GtkWidge
       {
         showDialogBox("Cannot save the file!", error);
       } else {
-        sprintf(buff, "Grid %s opened!\n", selected_filename);
+        sprintf(buff, "Grid saved as LaTex format at %s!\n", selected_filename);
         sdk_gui_load_grid(sdk_grid);
         appendConsole(buff);
       }
@@ -206,7 +207,7 @@ static void showSaveFile(gpointer callback_data, guint callback_action, GtkWidge
       {
         showDialogBox("Cannot save the file!", error);
       } else {
-        sprintf(buff, "Grid %s opened!\n", selected_filename);
+        sprintf(buff, "Grid saved as pdf format at %s!\n", selected_filename);
         sdk_gui_load_grid(sdk_grid);
         appendConsole(buff);
       }
@@ -419,8 +420,10 @@ void resolveGrid()
 void button_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
   gtk_widget_modify_bg (widget, GTK_STATE_NORMAL, &c_red);
-  if ( (prev_selected_entry != NULL) && (prev_selected_entry->widget != widget) )
+
+  if ( (prev_selected_entry != NULL) && (prev_selected_entry->event_box != widget) )
     gtk_widget_modify_bg (prev_selected_entry->event_box, GTK_STATE_NORMAL, prev_selected_entry->color);
+
   prev_selected_entry = (struct sdk_gui_entry_s*) data;
   gtk_widget_grab_focus(widget);
 }
@@ -475,7 +478,6 @@ void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
       sdk_grid[entry->i][entry->j].value = 9;
       break;
   }
-
 }
 
 void focus_in_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
@@ -495,7 +497,9 @@ void focus_out_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 int sdk_gui_init(int argc, char **argv)
 {
   /*  Variables */
-  GtkWidget* table = NULL;
+  GtkWidget* table1 = NULL;
+  GtkWidget* table2 = NULL;
+
   GtkWidget* txt = NULL;
   GtkWidget* menubar = NULL;
   GtkWidget* vbox = NULL;
@@ -504,6 +508,7 @@ int sdk_gui_init(int argc, char **argv)
   PangoAttrList *attr_lst;
   PangoAttribute *attr;
   GtkWidget *event_box = NULL;
+  GtkWidget *frame = NULL;
 
   char welcome_msg[256];
   int i, j;
@@ -522,25 +527,32 @@ int sdk_gui_init(int argc, char **argv)
   attr_lst = pango_attr_list_new();
   pango_attr_list_insert(attr_lst, attr);
 
-  table = gtk_table_new(9,9,TRUE);
-  gtk_table_set_homogeneous(GTK_TABLE(table), TRUE);
-  gtk_container_set_border_width(GTK_CONTAINER(table), 10);
-  for(i=0; i<9; ++i)
+  table1 = gtk_table_new(3,3,TRUE);
+
+  gtk_container_set_border_width(GTK_CONTAINER(table1), 10);
+
+  for (i=0; i<9; ++i)
   {
-    for(j=0; j<9; ++j)
+    frame = gtk_frame_new(NULL);
+    gtk_frame_set_shadow_type(GTK_FRAME(frame), GTK_SHADOW_OUT);
+    gtk_widget_modify_bg (frame, GTK_STATE_NORMAL, &c_dark);
+    table2 = gtk_table_new(3,3,TRUE);
+    gtk_container_add(GTK_CONTAINER(frame), table2);
+    gtk_table_attach(GTK_TABLE(table1), frame, i/3, (i/3)+1, (i%3), (i%3)+1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
+
+    for (j=0; j<9; ++j)
     {
       event_box = gtk_event_box_new();
       txt = gtk_label_new("");
 
       gtk_label_set_attributes(GTK_LABEL(txt), attr_lst);
-
       gtk_label_set_justify(GTK_LABEL(txt), GTK_JUSTIFY_CENTER);
       gtk_widget_set_size_request(event_box, 50, 50);
 
       gui_grid_entries[count].widget = txt;
       gui_grid_entries[count].event_box = event_box;
-      gui_grid_entries[count].i = i;
-      gui_grid_entries[count].j = j;
+      gui_grid_entries[count].i = (i%3)*3 + ((j%3)+1);
+      gui_grid_entries[count].j = (i/3)*3 + ((j/3)+1);
 
       GTK_WIDGET_SET_FLAGS (event_box,GTK_CAN_FOCUS);
       g_signal_connect(G_OBJECT(event_box), "button_press_event", G_CALLBACK(button_press), (gpointer) &gui_grid_entries[count]);
@@ -565,9 +577,8 @@ int sdk_gui_init(int argc, char **argv)
         }
       }
 
-
       gtk_container_add(GTK_CONTAINER(event_box), txt);
-      gtk_table_attach(GTK_TABLE(table), event_box, j, j+1, i, i+1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
+      gtk_table_attach(GTK_TABLE(table2), event_box, j/3, (j/3)+1, j%3, (j%3)+1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
 
       ++count;
     }
@@ -590,12 +601,12 @@ int sdk_gui_init(int argc, char **argv)
   console = gtk_text_view_new();
   console_buff = gtk_text_view_get_buffer(GTK_TEXT_VIEW(console));
 
-  sprintf(welcome_msg, "Application launched !\nWelcome to the Sudoku Solver version %d.%d\n", SDK_VERSION_MAJOR, SDK_VERSION_MINOR);
+  sprintf(welcome_msg, "Application launched !\nWelcome to the Sudoku Solver version %s\n", SDK_VERSION);
   appendConsole(welcome_msg);
   gtk_container_add (GTK_CONTAINER (scroll), GTK_WIDGET (console));
 
   gtk_box_pack_start (GTK_BOX (vbox), menubar, FALSE, FALSE, 0);
-  gtk_box_pack_start (GTK_BOX (vbox), table, FALSE, FALSE, 2);
+  gtk_box_pack_start (GTK_BOX (vbox), table1, FALSE, FALSE, 2);
   gtk_box_pack_start (GTK_BOX (vbox), resolve_btn, FALSE, FALSE, 2);
   gtk_box_pack_start (GTK_BOX (vbox), scroll, TRUE, TRUE, 0);
 
