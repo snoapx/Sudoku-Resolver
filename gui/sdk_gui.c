@@ -37,18 +37,26 @@
 #include <gtk/gtk.h>
 #include <sdk_resolver.h>
 #include <string.h>
+#include <gdk/gdkkeysyms.h>
 #include "sdk_gui.h"
 
-static GtkWidget* gui_grid_entries[9*9];
+static struct sdk_gui_entry_s gui_grid_entries[9*9];
 static GtkTextBuffer* console_buff = NULL;
-static GtkWidget* scroll = NULL;
-static GtkWidget* dialog = NULL;
-static GtkWidget* dialog_label = NULL;
-static GtkWidget* MainWindow = NULL;
-static GtkWidget* popup = NULL;
+static GtkWidget *scroll = NULL;
+static GtkWidget *dialog = NULL;
+static GtkWidget *dialog_label = NULL;
+static GtkWidget *MainWindow = NULL;
+static GtkWidget *popup = NULL;
 static GtkWidget *progress_bar;
+static struct sdk_gui_entry_s *prev_selected_entry = NULL;
+
 static struct sdk_grid_entry_s sdk_grid[9][9];
 static struct sdk_grid_entry_s sdk_result[9][9];
+static GdkColor c_gray = { 10, 0xaaaa, 0xaaaa, 0xaaaa };
+static GdkColor c_light_gray = { 10, 0xdddd, 0xdddd, 0xdddd };
+static GdkColor c_dark_gray = { 10, 0xaaaa, 0xaaaa, 0xaaaa };
+static GdkColor c_red= { 10, 0xffff, 0xaaaa, 0xaaaa};
+static GdkColor c_white= { 10, 0xffff, 0xffff, 0xffff};
 
 static void showDialogBox(char* txt, int error)
 {
@@ -142,7 +150,7 @@ static void showAbout()
 }
 
 
-/* open a file */
+/* save a grid into a file */
 static void showSaveFile(gpointer callback_data, guint callback_action, GtkWidget *widget)
 {
   GtkWidget* file_chooser;
@@ -192,6 +200,17 @@ static void showSaveFile(gpointer callback_data, guint callback_action, GtkWidge
         appendConsole(buff);
       }
     }
+    else if(strstr(selected_filename, ".pdf"))
+    {
+      if ((error = sdk_saveGrid((char*) selected_filename, sdk_grid, SDK_FILE_FORMAT_PDF)) != 0)
+      {
+        showDialogBox("Cannot save the file!", error);
+      } else {
+        sprintf(buff, "Grid %s opened!\n", selected_filename);
+        sdk_gui_load_grid(sdk_grid);
+        appendConsole(buff);
+      }
+    }
 
     g_free (selected_filename);
   }
@@ -199,7 +218,7 @@ static void showSaveFile(gpointer callback_data, guint callback_action, GtkWidge
 }
 
 
-/* open a file */
+/* open a grid file */
 static void showOpenFile()
 {
   GtkWidget* file_chooser;
@@ -248,8 +267,8 @@ static void resetGrid()
 
   for(i=0; i<9*9; ++i)
   {
-    txt = gui_grid_entries[i];
-    gtk_entry_set_text(GTK_ENTRY(txt), "");
+    txt = gui_grid_entries[i].widget;
+    gtk_label_set_text(GTK_LABEL(txt), "");
   }
 }
 
@@ -283,7 +302,7 @@ static void setGridEditable(int boolean)
 
   for (i=0; i<9*9; ++i)
   {
-    gtk_editable_set_editable(GTK_EDITABLE(gui_grid_entries[i]), FALSE);
+    gtk_editable_set_editable(GTK_EDITABLE(gui_grid_entries[i].widget), FALSE);
   }
 }
 
@@ -364,11 +383,11 @@ sdk_gui_load_grid(struct sdk_grid_entry_s grid[][9])
     for (j=0; j<9; ++j)
     {
       if (grid[i][j].value == 0)
-        gtk_entry_set_text(GTK_ENTRY(gui_grid_entries[count]), "");
+        gtk_label_set_text(GTK_LABEL(gui_grid_entries[count].widget), "");
       else
       {
         sprintf(num, "%d", grid[i][j].value);
-        gtk_entry_set_text(GTK_ENTRY(gui_grid_entries[count]), num);
+        gtk_label_set_text(GTK_LABEL(gui_grid_entries[count].widget), num);
       }
       ++count;
     }
@@ -397,6 +416,77 @@ void resolveGrid()
   appendConsole(buff);
 }
 
+void button_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
+{
+  gtk_widget_modify_bg (widget, GTK_STATE_NORMAL, &c_red);
+  if ( (prev_selected_entry != NULL) && (prev_selected_entry->widget != widget) )
+    gtk_widget_modify_bg (prev_selected_entry->event_box, GTK_STATE_NORMAL, prev_selected_entry->color);
+  prev_selected_entry = (struct sdk_gui_entry_s*) data;
+  gtk_widget_grab_focus(widget);
+}
+
+void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
+{
+  struct sdk_gui_entry_s* entry = data;
+
+  sdk_grid[entry->i][entry->j].isBase = 1;
+  switch(event->keyval)
+  {
+    case GDK_0 :
+    case GDK_Delete :
+      gtk_label_set_text(GTK_LABEL(entry->widget), "");
+      sdk_grid[entry->i][entry->j].value = 0;
+      sdk_grid[entry->i][entry->j].isBase = 0;
+      break;
+    case GDK_1 :
+      gtk_label_set_text(GTK_LABEL(entry->widget), "1");
+      sdk_grid[entry->i][entry->j].value = 1;
+      break;
+    case GDK_2 :
+      gtk_label_set_text(GTK_LABEL(entry->widget), "2");
+      sdk_grid[entry->i][entry->j].value = 2;
+      break;
+    case GDK_3 :
+      gtk_label_set_text(GTK_LABEL(entry->widget), "3");
+      sdk_grid[entry->i][entry->j].value = 3;
+      break;
+    case GDK_4 :
+      gtk_label_set_text(GTK_LABEL(entry->widget), "4");
+      sdk_grid[entry->i][entry->j].value = 4;
+      break;
+    case GDK_5 :
+      gtk_label_set_text(GTK_LABEL(entry->widget), "5");
+      sdk_grid[entry->i][entry->j].value = 5;
+      break;
+    case GDK_6 :
+      gtk_label_set_text(GTK_LABEL(entry->widget), "6");
+      sdk_grid[entry->i][entry->j].value = 6;
+      break;
+    case GDK_7 :
+      gtk_label_set_text(GTK_LABEL(entry->widget), "7");
+      sdk_grid[entry->i][entry->j].value = 7;
+      break;
+    case GDK_8 :
+      gtk_label_set_text(GTK_LABEL(entry->widget), "8");
+      sdk_grid[entry->i][entry->j].value = 8;
+      break;
+    case GDK_9 :
+      gtk_label_set_text(GTK_LABEL(entry->widget), "9");
+      sdk_grid[entry->i][entry->j].value = 9;
+      break;
+  }
+
+}
+
+void focus_in_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
+{
+  GTK_WIDGET_SET_FLAGS (widget, GTK_HAS_FOCUS);
+}
+
+void focus_out_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
+{
+  GTK_WIDGET_UNSET_FLAGS (widget, GTK_HAS_FOCUS);
+}
 
 /**
  *  sdk_gui_init()
@@ -411,32 +501,74 @@ int sdk_gui_init(int argc, char **argv)
   GtkWidget* vbox = NULL;
   GtkWidget* resolve_btn = NULL;
   GtkWidget* console = NULL;
+  PangoAttrList *attr_lst;
+  PangoAttribute *attr;
+  GtkWidget *event_box = NULL;
+
   char welcome_msg[256];
   int i, j;
   int count = 0;
 
-  /*  Initialisation de GTK+ */
+  /* initialiszation of the GTK+ window*/
   gtk_init(&argc, &argv);
 
-  /*  Création de la fenêtre */
+  /* window creation  */
   MainWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_title(GTK_WINDOW(MainWindow), "Sudoku Solver");
   gtk_window_set_position(GTK_WINDOW(MainWindow), GTK_WIN_POS_CENTER);
   gtk_window_set_resizable(GTK_WINDOW(MainWindow), FALSE);
 
+  attr = pango_attr_size_new(20 * PANGO_SCALE);
+  attr_lst = pango_attr_list_new();
+  pango_attr_list_insert(attr_lst, attr);
+
   table = gtk_table_new(9,9,TRUE);
+  gtk_table_set_homogeneous(GTK_TABLE(table), TRUE);
   gtk_container_set_border_width(GTK_CONTAINER(table), 10);
   for(i=0; i<9; ++i)
   {
     for(j=0; j<9; ++j)
     {
-      txt = gtk_entry_new();
-      gtk_entry_set_text(GTK_ENTRY(txt), "");
-      gtk_entry_set_width_chars(GTK_ENTRY(txt), 2);
-      gtk_entry_set_alignment (GTK_ENTRY(txt), 0.5);
-      gtk_entry_set_max_length (GTK_ENTRY(txt), 1);
-      gtk_table_attach_defaults(GTK_TABLE(table), txt, j, j+1, i, i+1);
-      gui_grid_entries[count] = txt;
+      event_box = gtk_event_box_new();
+      txt = gtk_label_new("");
+
+      gtk_label_set_attributes(GTK_LABEL(txt), attr_lst);
+
+      gtk_label_set_justify(GTK_LABEL(txt), GTK_JUSTIFY_CENTER);
+      gtk_widget_set_size_request(event_box, 50, 50);
+
+      gui_grid_entries[count].widget = txt;
+      gui_grid_entries[count].event_box = event_box;
+      gui_grid_entries[count].i = i;
+      gui_grid_entries[count].j = j;
+
+      GTK_WIDGET_SET_FLAGS (event_box,GTK_CAN_FOCUS);
+      g_signal_connect(G_OBJECT(event_box), "button_press_event", G_CALLBACK(button_press), (gpointer) &gui_grid_entries[count]);
+      g_signal_connect(G_OBJECT(event_box), "key_press_event", G_CALLBACK(key_press), (gpointer) &gui_grid_entries[count]);
+      g_signal_connect(G_OBJECT(event_box), "focus_in_event", G_CALLBACK(focus_in_event), NULL);
+      g_signal_connect(G_OBJECT(event_box), "focus_out_event", G_CALLBACK(focus_out_event), NULL);
+
+      gtk_widget_modify_bg (event_box, GTK_STATE_NORMAL, &c_white);
+      gui_grid_entries[count].color = &c_white;
+      if (i%2)
+      {
+        if (j%2) {
+          gtk_widget_modify_bg (event_box, GTK_STATE_NORMAL, &c_light_gray);
+          gui_grid_entries[count].color = &c_light_gray;
+        }
+      }
+      else
+      {
+        if (! (j%2)) {
+          gtk_widget_modify_bg (event_box, GTK_STATE_NORMAL, &c_light_gray);
+          gui_grid_entries[count].color = &c_light_gray;
+        }
+      }
+
+
+      gtk_container_add(GTK_CONTAINER(event_box), txt);
+      gtk_table_attach(GTK_TABLE(table), event_box, j, j+1, i, i+1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
+
       ++count;
     }
   }
@@ -471,7 +603,6 @@ int sdk_gui_init(int argc, char **argv)
   g_signal_connect(G_OBJECT(MainWindow), "delete-event", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT(resolve_btn), "clicked", G_CALLBACK(resolveGrid), NULL);
 
-  /*  Affichage et boucle évènementielle */
   gtk_widget_show_all(MainWindow);
   gtk_widget_hide(scroll);
 
@@ -479,6 +610,5 @@ int sdk_gui_init(int argc, char **argv)
 
   gtk_main();
 
-  /*  On quitte.. */
   return EXIT_SUCCESS;
 }

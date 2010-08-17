@@ -87,7 +87,8 @@ struct sdk_grid_entry_s
 
 typedef enum {
   SDK_FILE_FORMAT_LATEX,
-  SDK_FILE_FORMAT_TEXT
+  SDK_FILE_FORMAT_TEXT,
+  SDK_FILE_FORMAT_PDF
 } sdk_file_format;
 
 

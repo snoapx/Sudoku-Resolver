@@ -392,6 +392,8 @@ sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9], sdk_file_forma
   int i = 0;
   int j;
   char line[BUFF];
+  char tmp_dir[BUFF];
+  int tmp_dir_fd;
 
   if ((grid_fd = fopen(path, "w")) == NULL)
     return SDK_ERR_FILE_NOT_FOUND;
@@ -448,6 +450,18 @@ sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9], sdk_file_forma
       }
       fputs("\\end{tabular}\n", grid_fd);
       fputs("\\end{document}", grid_fd);
+      break;
+    case SDK_FILE_FORMAT_PDF:
+      strncpy(tmp_dir, "/tmp/sdk.XXXXXX", sizeof(tmp_dir));
+      tmp_dir_fd = mkstemp(tmp_dir);
+
+      if (tmp_dir_fd == -1)
+      {
+        //TODO Add verifications
+        abort();
+      }
+
+
       break;
 
   }
