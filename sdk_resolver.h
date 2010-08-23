@@ -92,11 +92,46 @@ typedef enum {
 } sdk_file_format;
 
 
+/**
+ *  sdk_resolveGrid()
+ * \brief Resolves a Sudoku grid
+ */
 void sdk_resolveGrid(struct sdk_grid_entry_s grid[][9], struct sdk_grid_entry_s result[][9], int* nb_solutions, int* nb_computations, int one_solution);
+
+
+/**
+ *  sdk_generateGrid()
+ * \brief Generate a Sudoku grid
+ */
 void sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int));
 
+
+/**
+ *  sdk_resetGrid()
+ * \brief Reset a grid. Each entry is set up
+ */
+void sdk_resetGrid(struct sdk_grid_entry_s grid[][9], int i, int j);
+
+int sdk_checkConstrains(struct sdk_grid_entry_s grid[][9], struct sdk_grid_entry_s* entry, int value);
+
+/**
+ *  sdk_openGrid()
+ * \brief Open a Sudoku grid from a path
+ */
 int sdk_openGrid(const char* path, struct sdk_grid_entry_s grid[][9]);
+
+
+/**
+ *  sdk_saveGrid()
+ * \brief Save a Sudoku grid to a path
+ */
 int sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9], sdk_file_format format);
+
+
+/**
+ *  sdk_showGrid()
+ * \brief Show a grid in terminal mode
+ */
 void sdk_showGrid();
 
 #endif

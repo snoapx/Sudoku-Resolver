@@ -118,7 +118,7 @@ void sdk_showGrid(struct sdk_grid_entry_s grid[][9])
 }
 
 /* check constrains for a grid's entry */
-static int check_constrains(struct sdk_grid_entry_s grid[][9],
+int sdk_checkConstrains(struct sdk_grid_entry_s grid[][9],
 struct sdk_grid_entry_s* entry, int value)
 {
   int i, j;
@@ -266,7 +266,7 @@ sdk_resolveGrid_recurs(struct sdk_grid_entry_s grid[][9],
     i = 1;
     while(i < 10)
     {
-      if (check_constrains(grid, entry, entry->possibleValues[i]))
+      if (sdk_checkConstrains(grid, entry, entry->possibleValues[i]))
       {
         ++ *nb_computations;
 
@@ -323,6 +323,17 @@ sdk_resolveGrid(struct sdk_grid_entry_s grid[][9],
 }
 
 void
+sdk_resetGrid(struct sdk_grid_entry_s grid[][9], int i, int j)
+{
+
+  fillPossibleValues(&grid[i][j]);
+  grid[i][j].isBase = 0;
+  grid[i][j].value = 0;
+  grid[i][j].i = i;
+  grid[i][j].j = j;
+}
+
+  void
 sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int))
 {
   int i,j;
@@ -336,12 +347,8 @@ sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int))
   {
     for(j=0; j<9; ++j)
     {
-      fillPossibleValues(&grid[i][j]);
+      sdk_resetGrid(grid, i, j);
       shufflePossibleValues(&grid[i][j]);
-      grid[i][j].isBase = 0;
-      grid[i][j].value = 0;
-      grid[i][j].i = i;
-      grid[i][j].j = j;
     }
   }
   sdk_resolveGrid(grid, NULL, &nb_solutions, &nb_computations, 1);
@@ -385,7 +392,7 @@ sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int))
  *  sdk_openGrid()
  * @brief Save a Sudoku grid into a file
  */
-int
+  int
 sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9], sdk_file_format format)
 {
   FILE* grid_fd = NULL;
@@ -470,10 +477,6 @@ sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9], sdk_file_forma
   return 0;
 }
 
-/**
- *  sdk_openGrid()
- * @brief Open a Sudoku grid file
- */
   int
 sdk_openGrid(const char* path, struct sdk_grid_entry_s grid[][9])
 {

@@ -4,6 +4,9 @@ EXEC=sdk_resolver
 
 all:sdk_resolver
 
+doc:
+	mkdir doc/ && doxygen Doxyfile
+
 sdk_gui:
 	@echo "## Building sdk_gui"
 	@cd gui/ && make gui
@@ -18,4 +21,5 @@ sdk_resolver: sdk_gui sdk_resolver.c sdk_resolver.h main.c
 clean:
 	cd gui/ && make clean
 	@rm -f $(EXEC)
+	@rm -r doc
 
