@@ -133,7 +133,6 @@ struct sdk_grid_entry_s* entry, int value)
   {
     if (k != j)
     {
-//      fprintf(stderr, "i=%d, k=%d, value=%d\n", i, k, value);
       if (value == grid[i][k].value)
         return 0;
     }
@@ -334,13 +333,15 @@ sdk_resetGrid(struct sdk_grid_entry_s grid[][9], int i, int j)
 }
 
   void
-sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int))
+sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int), enum sdk_grid_difficulty difficulty)
 {
   int i,j;
   int nb_solutions = 0;
   int nb_computations = 0;
   struct sdk_grid_entry_s tmp_grid [9][9];
   int path[81];
+  int nb_entries = 0;
+  int done = 0;
 
   srand(time(NULL));
   for(i=0; i<9; ++i)
@@ -358,7 +359,7 @@ sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int))
 
   memcpy(tmp_grid, grid, 81 * sizeof(struct sdk_grid_entry_s));
 
-  for(i=0; i<81; ++i)
+  for(i=0; (i<81) & !done; ++i)
   {
     fprintf(stderr, ".");
     func(i);
@@ -375,17 +376,24 @@ sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int))
     }
     else
     {
+      ++nb_entries;
       memcpy(grid, tmp_grid, 81 * sizeof(struct sdk_grid_entry_s));
     }
+
+    if (difficulty == EASY_GRID) {
+      if ( (81 - nb_entries) <= EASY_GRID_NUM)
+        done = 1;
+    }
+    else if (difficulty == MEDIUM_GRID) {
+      if ( (81 - nb_entries) <= MEDIUM_GRID_NUM)
+        done = 1;
+    }
+    else if (difficulty == DIFFICULT_GRID) {
+      if ( (81 - nb_entries) <= DIFFICULT_GRID_NUM)
+        done = 1;
+    }
   }
-  fprintf(stderr, ".\n");
-
-  nb_solutions = 0;
-  nb_computations = 0;
-  sdk_resolveGrid(tmp_grid, NULL, &nb_solutions, &nb_computations, 0);
-
-  //TODO Check solutions number
-  fprintf(stderr, "Number of solutions : %d\n", nb_solutions);
+    fprintf(stderr, "\n");
 }
 
 /**

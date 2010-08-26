@@ -35,11 +35,16 @@
 #ifndef __SDK_RESOLVER_H
 #define __SDK_RESOLVER_H
 
+#ifdef GTK_ENABLE
+#include <gtk/gtk.h>
+#endif
+#include "config.h"
+
 #define STR(s) #s
 #define XSTR(s) STR(s)
 #define SDK_VERSION_MAJOR 1
 #define SDK_VERSION_MINOR 0
-#define SDK_VERSION_RC 3
+#define SDK_VERSION_RC 4
 #define SDK_VERSION XSTR(SDK_VERSION_MAJOR)"."XSTR(SDK_VERSION_MINOR)"-rc"XSTR(SDK_VERSION_RC)
 
 #define SDK_COMPILE_DATE __DATE__
@@ -74,6 +79,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>."
 #define UNUSED
 #endif
 
+#define EASY_GRID_NUM 30
+#define MEDIUM_GRID_NUM 27
+#define DIFFICULT_GRID_NUM 24
+
+/* grid difficulty */
+enum sdk_grid_difficulty
+{
+  EASY_GRID,
+  MEDIUM_GRID,
+  DIFFICULT_GRID
+};
+
 struct sdk_grid_entry_s
 {
   int i;
@@ -83,6 +100,12 @@ struct sdk_grid_entry_s
 
   int isBase;
   int possibleValues[10];
+
+#ifdef GTK_ENABLE
+  GtkWidget* widget;
+  GtkWidget* event_box;
+  GdkColor *color;
+#endif
 };
 
 typedef enum {
@@ -98,13 +121,11 @@ typedef enum {
  */
 void sdk_resolveGrid(struct sdk_grid_entry_s grid[][9], struct sdk_grid_entry_s result[][9], int* nb_solutions, int* nb_computations, int one_solution);
 
-
 /**
  *  sdk_generateGrid()
  * \brief Generate a Sudoku grid
  */
-void sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int));
-
+void sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int), enum sdk_grid_difficulty difficulty);
 
 /**
  *  sdk_resetGrid()
@@ -112,6 +133,11 @@ void sdk_generateGrid(struct sdk_grid_entry_s grid[][9], void (*func)(int));
  */
 void sdk_resetGrid(struct sdk_grid_entry_s grid[][9], int i, int j);
 
+
+/**
+ *  sdl_checkConstrains()
+ * \brief Check the constrains of an sdk entry in a grid
+ */
 int sdk_checkConstrains(struct sdk_grid_entry_s grid[][9], struct sdk_grid_entry_s* entry, int value);
 
 /**
@@ -120,13 +146,11 @@ int sdk_checkConstrains(struct sdk_grid_entry_s grid[][9], struct sdk_grid_entry
  */
 int sdk_openGrid(const char* path, struct sdk_grid_entry_s grid[][9]);
 
-
 /**
  *  sdk_saveGrid()
  * \brief Save a Sudoku grid to a path
  */
 int sdk_saveGrid(const char* path, struct sdk_grid_entry_s grid[][9], sdk_file_format format);
-
 
 /**
  *  sdk_showGrid()
