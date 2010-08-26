@@ -37,19 +37,11 @@
 
 #include <gtk/gtk.h>
 
-struct sdk_gui_entry_s
-{
-  GtkWidget* widget;
-  GtkWidget* event_box;
-  GdkColor *color;
 
-  int i;
-  int j;
-};
-
-void
-  sdk_gui_load_grid();
-int
-  sdk_gui_init(int argc, char **argv);
+/**
+ *  sdk_gui_init()
+ * \brief Initialize the Sudoku GUI
+ */
+int sdk_gui_init(int argc, char **argv);
 
 #endif
