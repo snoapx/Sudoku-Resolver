@@ -80,7 +80,6 @@ static void showDialogBox(char* txt, int error, GtkMessageType type)
       type,
       GTK_BUTTONS_OK,
       buff);
-//  gtk_window_set_title(GTK_WINDOW(dialog));
   gtk_dialog_run(GTK_DIALOG(dialog));
   gtk_widget_destroy(dialog);
 }
@@ -107,9 +106,11 @@ sdk_gui_load_grid(struct sdk_grid_entry_s grid[][9])
       sdk_grid[i][j].value = grid[i][j].value;
       if (grid[i][j].value == 0) {
         gtk_label_set_text(GTK_LABEL(grid[i][j].widget), "");
+        sdk_grid[i][j].lock = 0;
       } else {
         sprintf(num, "%d", grid[i][j].value);
         gtk_label_set_text(GTK_LABEL(grid[i][j].widget), num);
+        sdk_grid[i][j].lock = 1;
       }
     }
   }
@@ -302,6 +303,7 @@ static void resetGrid()
       sdk_resetGrid(sdk_grid, i, j);
       txt = sdk_grid[i][j].widget;
       gtk_label_set_text(GTK_LABEL(txt), "");
+      sdk_grid[i][j].lock = 0;
     }
   }
 }
@@ -451,7 +453,9 @@ void checkConstraints()
       if (sdk_grid[i][j].value != 0) {
         if (sdk_checkConstrains(sdk_grid, &sdk_grid[i][j], sdk_grid[i][j].value) == 0) {
           gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_dark_red);
-        } else {
+        } else if (sdk_grid[i][j].lock == 0) {
+          gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_blue);
+        } else if (sdk_grid[i][j].lock == 1) {
           gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_black);
         }
       }
@@ -460,12 +464,14 @@ void checkConstraints()
 }
 
 #define UPDATE_ENTRY(x) \
-      gtk_label_set_text(GTK_LABEL(entry->widget), STR(x)); \
-      sdk_grid[entry->i][entry->j].value = x; \
-      checkConstraints();
+  if (entry->lock == 1) \
+    return; \
+  gtk_label_set_text(GTK_LABEL(entry->widget), STR(x)); \
+  entry->value = x; \
+  checkConstraints();
 
 #define UPDATE_SIGNALS \
-      g_signal_emit_by_name(G_OBJECT(sdk_grid[i][j].event_box), "focus_out_event"); \
+      g_signal_emit_by_name(G_OBJECT(entry->event_box), "focus_out_event"); \
       g_signal_emit_by_name(G_OBJECT(sdk_grid[_i][_j].event_box), "focus_in_event"); \
       g_signal_emit_by_name(G_OBJECT(sdk_grid[_i][_j].event_box), "button_press_event");
 
@@ -482,9 +488,12 @@ void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
   {
     case GDK_0 :
     case GDK_Delete :
+      if (entry->lock == 1) \
+        return; \
       gtk_label_set_text(GTK_LABEL(entry->widget), "");
       sdk_grid[entry->i][entry->j].value = 0;
       sdk_grid[entry->i][entry->j].isBase = 0;
+      checkConstraints();
       break;
     case GDK_1 :
       UPDATE_ENTRY(1);

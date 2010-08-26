@@ -100,6 +100,7 @@ struct sdk_grid_entry_s
 
   int isBase;
   int possibleValues[10];
+  int lock;
 
 #ifdef GTK_ENABLE
   GtkWidget* widget;
