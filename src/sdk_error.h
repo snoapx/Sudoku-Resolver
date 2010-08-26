@@ -3,9 +3,9 @@
  *
  *       Filename:  sdk_error.h
  *
- *    Description:
+ *    Description:  Sudoku resolver - A easy-to-use tool for finding the
+ *                  solution of a Sudoku grid.
  *
- *        Version:  1.0
  *        Created:  24/08/2010 22:42:53
  *       Revision:  none
  *       Compiler:  gcc
@@ -13,6 +13,23 @@
  *         Author:  Sylvain Didelot, didelot.sylvain@gmail.com
  *
  * =====================================================================================
+ *
+ * Sudoku Resolver - An easy-to-use tool for finding the solution of a
+ * Sudoku grid.
+ * Copyright (C) 2010  Sylvain Didelot - didelot.sylvain@gmail.com
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>."
  */
 
 /* ERRORS */

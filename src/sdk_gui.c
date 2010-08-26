@@ -45,38 +45,44 @@
 #include "sdk_colors.h"
 #include "sdk_error.h"
 
+/* console buffer at the bottom of the sdk grid */
 static GtkTextBuffer* console_buff = NULL;
+/* scroll bar of the console buffer */
 static GtkWidget *scroll = NULL;
-static GtkWidget *dialog = NULL;
-static GtkWidget *dialog_label = NULL;
+/* sdk resolver main window */
 static GtkWidget *MainWindow = NULL;
+/* waiting popup window */
 static GtkWidget *popup = NULL;
+/* waiting progress bar */
 static GtkWidget *progress_bar;
+/* previous entry selected in the sdk */
 static struct sdk_grid_entry_s *prev_selected_entry = NULL;
 
+/* grid shown by the application */
 static struct sdk_grid_entry_s sdk_grid[9][9];
+/* variable where the result of a grid is stored */
 static struct sdk_grid_entry_s sdk_result[9][9];
 
-static void showDialogBox(char* txt, int error)
+/* show a dialog box */
+static void showDialogBox(char* txt, int error, GtkMessageType type)
 {
-  GtkWidget *dialog, *label, *okay_button;
-  char buff[256];
+  GtkWidget *dialog;
+  char buff[512];
 
   /*  Create the widgets */
-  dialog = gtk_dialog_new();
-  sprintf(buff, "Error : %s\n\n\t%s\n", sdk_error[error].err_code, sdk_error[error].err_desc);
-  label = gtk_label_new (buff);
-  okay_button = gtk_button_new_with_label("OK");
+  if (type == GTK_MESSAGE_ERROR)
+    sprintf(buff, "Error code : %s\nError descritpion : %s\n\n%s", sdk_error[error].err_code, sdk_error[error].err_desc, txt);
+  else if (type == GTK_MESSAGE_INFO)
+    sprintf(buff, "Information : %s", txt);
 
-  /*  Ensure that the dialog box is destroyed when the user clicks
-   *  ok. */
-  gtk_signal_connect_object(GTK_OBJECT (okay_button), "clicked", G_CALLBACK(gtk_widget_destroy), GTK_OBJECT(dialog));
-  gtk_container_add (GTK_CONTAINER (GTK_DIALOG(dialog)->action_area), okay_button);
-
-  /*  Add the label, and show everything we've added to the
-   *  dialog. */
-  gtk_container_add (GTK_CONTAINER (GTK_DIALOG(dialog)->vbox), label);
-  gtk_widget_show_all (dialog);
+  dialog = gtk_message_dialog_new(GTK_WINDOW(MainWindow),
+      GTK_DIALOG_DESTROY_WITH_PARENT,
+      type,
+      GTK_BUTTONS_OK,
+      buff);
+//  gtk_window_set_title(GTK_WINDOW(dialog));
+  gtk_dialog_run(GTK_DIALOG(dialog));
+  gtk_widget_destroy(dialog);
 }
 
 /* append a line to the program's console */
@@ -205,7 +211,7 @@ static void showSaveFile(gpointer callback_data, guint callback_action, GtkWidge
     {
       if ((error = sdk_saveGrid((char*) selected_filename, sdk_grid, SDK_FILE_FORMAT_TEXT)) != 0)
       {
-        showDialogBox("Cannot save the file!", error);
+        showDialogBox("Cannot open the selected file", error, GTK_MESSAGE_ERROR );
       } else {
         sprintf(buff, "Grid saved as text format at %s!\n", selected_filename);
         sdk_gui_load_grid(sdk_grid);
@@ -216,7 +222,7 @@ static void showSaveFile(gpointer callback_data, guint callback_action, GtkWidge
     {
       if ((error = sdk_saveGrid((char*) selected_filename, sdk_grid, SDK_FILE_FORMAT_LATEX)) != 0)
       {
-        showDialogBox("Cannot save the file!", error);
+        showDialogBox("Cannot open the selected file", error, GTK_MESSAGE_ERROR);
       } else {
         sprintf(buff, "Grid saved as LaTex format at %s!\n", selected_filename);
         sdk_gui_load_grid(sdk_grid);
@@ -227,7 +233,7 @@ static void showSaveFile(gpointer callback_data, guint callback_action, GtkWidge
     {
       if ((error = sdk_saveGrid((char*) selected_filename, sdk_grid, SDK_FILE_FORMAT_PDF)) != 0)
       {
-        showDialogBox("Cannot save the file!", error);
+        showDialogBox("Cannot save the file!", error, GTK_MESSAGE_ERROR);
       } else {
         sprintf(buff, "Grid saved as pdf format at %s!\n", selected_filename);
         sdk_gui_load_grid(sdk_grid);
@@ -270,7 +276,7 @@ static void showOpenFile()
 
     if ((error = sdk_openGrid((char*) selected_filename, sdk_grid)) != 0)
     {
-      showDialogBox("Cannot open the file!", error);
+      showDialogBox("Cannot open the file!", error, GTK_MESSAGE_ERROR);
     } else {
       sprintf(buff, "Grid %s opened!\n", selected_filename);
       sdk_gui_load_grid(sdk_grid);
@@ -351,12 +357,6 @@ static void setGridEditable(int boolean)
   }
 }
 
-static void showGridResults(char* txt)
-{
-  gtk_label_set_text(GTK_LABEL(dialog_label), txt);
-  gtk_widget_show_all (dialog);
-}
-
 static void resolveGrid()
 {
   char buff[256];
@@ -368,16 +368,21 @@ static void resolveGrid()
     if (nb_solutions != 0)
   {
     sprintf(buff, "Solution found in %d computations!\n", nb_computations);
-    showGridResults(buff);
     sdk_gui_load_grid(sdk_result);
+    showDialogBox(buff, 0, GTK_MESSAGE_INFO);
   }
   else
   {
     sprintf(buff, "No solution found!\n");
-    showGridResults(buff);
+    showDialogBox(buff, 0, GTK_MESSAGE_INFO);
   }
 
   appendConsole(buff);
+}
+
+static void showManual(gpointer callback_data, guint callback_action, GtkWidget *widget)
+{
+  showDialogBox("Function not implemented", 0, GTK_MESSAGE_INFO);
 }
 
 static GtkItemFactoryEntry menu_items[] = {
@@ -400,7 +405,7 @@ static GtkItemFactoryEntry menu_items[] = {
 //²  {"/Options/Edit Grid", NULL, setGridEditable, 0, "<CheckItem>"},
 
   {"/Help", NULL, NULL, 0, "<Branch>"},
-  {"/Help/Manual", NULL, NULL, 0, "<StockItem>", GTK_STOCK_HELP},
+  {"/Help/Manual", NULL, showManual, 0, "<StockItem>", GTK_STOCK_HELP},
   {"/Help/About", NULL, showAbout, 0, "<StockItem>", GTK_STOCK_ABOUT}
 };
 
@@ -422,23 +427,6 @@ static void createMenu(GtkWidget* window, GtkWidget** menubar)
     *menubar = gtk_item_factory_get_widget(item_factory, "<main>");
 }
 
-static void createGridResults()
-{
-  GtkWidget* ok_btn = NULL;
-
-  dialog = gtk_dialog_new();
-  gtk_window_set_title(GTK_WINDOW(dialog), "Sudoku grid results");
-  gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
-
-  dialog_label = gtk_label_new(NULL);
-  ok_btn = gtk_button_new_with_label("Okay");
-  gtk_signal_connect_object(GTK_OBJECT (ok_btn), "clicked", G_CALLBACK(gtk_widget_hide), GTK_OBJECT(dialog));
-  gtk_container_add (GTK_CONTAINER (GTK_DIALOG(dialog)->action_area), ok_btn);
-  gtk_container_add (GTK_CONTAINER (GTK_DIALOG(dialog)->vbox), dialog_label);
-
-  gtk_widget_hide_all (dialog);
-}
-
 void button_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
 //  fprintf(stderr, "HERE %p %p %p",widget, event, data);
@@ -448,7 +436,6 @@ void button_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
     gtk_widget_modify_bg (prev_selected_entry->event_box, GTK_STATE_NORMAL, prev_selected_entry->color);
 
   prev_selected_entry = (struct sdk_grid_entry_s*) data;
-//  fprintf(stderr, "HERE");
   gtk_widget_grab_focus(widget);
 }
 
@@ -470,7 +457,6 @@ void checkConstraints()
       }
     }
   }
-
 }
 
 #define UPDATE_ENTRY(x) \
@@ -685,7 +671,6 @@ int sdk_gui_init(int argc, char **argv)
   gtk_widget_show_all(MainWindow);
   gtk_widget_hide(scroll);
 
-  createGridResults();
   resetGrid();
 
   gtk_main();
