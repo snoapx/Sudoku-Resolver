@@ -55,13 +55,22 @@ static GtkWidget *MainWindow = NULL;
 static GtkWidget *popup = NULL;
 /* waiting progress bar */
 static GtkWidget *progress_bar;
+/* menu bar */
+static GtkItemFactory* item_factory = NULL;
 /* previous entry selected in the sdk */
 static struct sdk_grid_entry_s *prev_selected_entry = NULL;
+/* if the grid is in editing mode */
+static int editing_mode = 0;
+//static int new_grid_mode = 1;
 
 /* grid shown by the application */
 static struct sdk_grid_entry_s sdk_grid[9][9];
 /* variable where the result of a grid is stored */
 static struct sdk_grid_entry_s sdk_result[9][9];
+
+static GtkItemFactoryEntry menu_items[];
+void checkConstraints();
+static gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data);
 
 /* show a dialog box */
 static void showDialogBox(char* txt, int error, GtkMessageType type)
@@ -98,22 +107,29 @@ sdk_gui_load_grid(struct sdk_grid_entry_s grid[][9])
 {
   int i, j;
   char num[10];
+  GtkWidget* edit_grid;
 
   for (i=0; i<9; ++i)
   {
     for (j=0; j<9; ++j)
     {
+      gtk_widget_modify_fg (sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_black);
       sdk_grid[i][j].value = grid[i][j].value;
+
       if (grid[i][j].value == 0) {
-        gtk_label_set_text(GTK_LABEL(grid[i][j].widget), "");
+        gtk_label_set_text(GTK_LABEL(sdk_grid[i][j].widget), "");
         sdk_grid[i][j].lock = 0;
       } else {
         sprintf(num, "%d", grid[i][j].value);
-        gtk_label_set_text(GTK_LABEL(grid[i][j].widget), num);
+        gtk_label_set_text(GTK_LABEL(sdk_grid[i][j].widget), num);
         sdk_grid[i][j].lock = 1;
+        if (!sdk_grid[i][j].isBase)
+          gtk_widget_modify_fg (sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_blue);
       }
     }
   }
+  edit_grid = gtk_item_factory_get_widget(GTK_ITEM_FACTORY(item_factory), "/Options/Edit Grid");
+  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(edit_grid), 0);
 }
 
 
@@ -167,15 +183,19 @@ static void showAbout()
 
   sprintf(comments, "A easy-to-use tool for finding the solution of a Sudoku grid\n. Program compiled the %s at %s", SDK_COMPILE_DATE, SDK_COMPILE_TIME);
 
+   GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file("img/Sudoku.gif", NULL);
+
   about = gtk_about_dialog_new();
   gtk_show_about_dialog (NULL,
       "program-name", "Sudoku Resolver",
       "authors", authors,
-      "logo", NULL,
+      "logo", pixbuf,
       "license", SDK_LICENSE,
       "version", SDK_VERSION,
+      "copyright", "GNU GPLv3",
       "title", "About Sudoku Resolver",
       "comments", comments,
+      "website", "http://github.com/snoapx/Sudoku-Resolver",
       NULL);
 }
 
@@ -306,6 +326,8 @@ static void resetGrid()
       sdk_grid[i][j].lock = 0;
     }
   }
+
+  button_press(sdk_grid[0][0].event_box, NULL, &sdk_grid[0][0]);
 }
 
 static void showNewFile()
@@ -346,17 +368,15 @@ static void showGenerateGrid(gpointer callback_data, guint callback_action, GtkW
   closeProgressBar();
 }
 
-static void setGridEditable(int boolean)
+static void setGridEditable(gpointer callback_data,
+    guint callback_action, GtkWidget *menu_item)
 {
-  int i, j;
+  if(GTK_CHECK_MENU_ITEM(menu_item)->active)
+    editing_mode = 1;
+  else
+    editing_mode = 0;
 
-  for (i=0; i<9; ++i)
-  {
-    for (j=0; j<9; ++j)
-    {
-      gtk_editable_set_editable(GTK_EDITABLE(sdk_grid[i][j].widget), FALSE);
-    }
-  }
+  checkConstraints();
 }
 
 static void resolveGrid()
@@ -371,6 +391,8 @@ static void resolveGrid()
   {
     sprintf(buff, "Solution found in %d computations!\n", nb_computations);
     sdk_gui_load_grid(sdk_result);
+    checkConstraints();
+
     showDialogBox(buff, 0, GTK_MESSAGE_INFO);
   }
   else
@@ -378,7 +400,6 @@ static void resolveGrid()
     sprintf(buff, "No solution found!\n");
     showDialogBox(buff, 0, GTK_MESSAGE_INFO);
   }
-
   appendConsole(buff);
 }
 
@@ -404,7 +425,7 @@ static GtkItemFactoryEntry menu_items[] = {
 
   {"/Options", NULL, NULL, 0, "<Branch>"},
   {"/Options/Show console", NULL, showConsole, 0, "<CheckItem>"},
-//²  {"/Options/Edit Grid", NULL, setGridEditable, 0, "<CheckItem>"},
+  {"/Options/Edit Grid", NULL, setGridEditable, 0, "<CheckItem>"},
 
   {"/Help", NULL, NULL, 0, "<Branch>"},
   {"/Help/Manual", NULL, showManual, 0, "<StockItem>", GTK_STOCK_HELP},
@@ -412,9 +433,8 @@ static GtkItemFactoryEntry menu_items[] = {
 };
 
 
-static void createMenu(GtkWidget* window, GtkWidget** menubar)
+static GtkWidget* createMenu(GtkWidget* window)
 {
-  GtkItemFactory* item_factory;
   GtkAccelGroup *accel_group;
   gint nmenu_items = sizeof(menu_items) / sizeof (menu_items[0]);
 
@@ -425,22 +445,24 @@ static void createMenu(GtkWidget* window, GtkWidget** menubar)
 
   gtk_window_add_accel_group(GTK_WINDOW(window), accel_group);
 
-  if (menubar)
-    *menubar = gtk_item_factory_get_widget(item_factory, "<main>");
+  return gtk_item_factory_get_widget(item_factory, "<main>");
 }
 
-void button_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
+static gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
-//  fprintf(stderr, "HERE %p %p %p",widget, event, data);
   gtk_widget_modify_bg (widget, GTK_STATE_NORMAL, &c_red);
 
   if ( (prev_selected_entry != NULL) && (prev_selected_entry->event_box != widget) )
+  {
     gtk_widget_modify_bg (prev_selected_entry->event_box, GTK_STATE_NORMAL, prev_selected_entry->color);
+  }
 
   prev_selected_entry = (struct sdk_grid_entry_s*) data;
+//  fprintf(stderr, "i=%d, j=%d", prev_selected_entry->i, prev_selected_entry->j);
   gtk_widget_grab_focus(widget);
-}
 
+  return TRUE;
+}
 
 void checkConstraints()
 {
@@ -450,11 +472,17 @@ void checkConstraints()
   {
     for (j = 0; j < 9; ++j)
     {
-      if (sdk_grid[i][j].value != 0) {
+      if (sdk_grid[i][j].isBase) {
         if (sdk_checkConstrains(sdk_grid, &sdk_grid[i][j], sdk_grid[i][j].value) == 0) {
           gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_dark_red);
         } else if (sdk_grid[i][j].lock == 0) {
-          gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_blue);
+          if (editing_mode == 0)
+            gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_blue);
+          else
+          {
+            gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_black);
+            sdk_grid[i][j].lock = 1;
+          }
         } else if (sdk_grid[i][j].lock == 1) {
           gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_black);
         }
@@ -464,23 +492,25 @@ void checkConstraints()
 }
 
 #define UPDATE_ENTRY(x) \
-  if (entry->lock == 1) \
+  if (entry->lock == 1 & editing_mode == 0) \
     return; \
   gtk_label_set_text(GTK_LABEL(entry->widget), STR(x)); \
+  sdk_grid[entry->i][entry->j].isBase = 1; \
   entry->value = x; \
   checkConstraints();
 
 #define UPDATE_SIGNALS \
-      g_signal_emit_by_name(G_OBJECT(entry->event_box), "focus_out_event"); \
-      g_signal_emit_by_name(G_OBJECT(sdk_grid[_i][_j].event_box), "focus_in_event"); \
-      g_signal_emit_by_name(G_OBJECT(sdk_grid[_i][_j].event_box), "button_press_event");
+        button_press(sdk_grid[_i][_j].event_box, NULL, &sdk_grid[_i][_j]);
+
+//      g_signal_emit_by_name(G_OBJECT(entry->event_box), "focus_out_event"); \
+//      g_signal_emit_by_name(G_OBJECT(sdk_grid[_i][_j].event_box), "focus_in_event");
+//      g_signal_emit_by_name(G_OBJECT(sdk_grid[_i][_j].event_box), "button_press_event");
 
 void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
   struct sdk_grid_entry_s* entry = data;
   int i, j, _i, _j;
 
-  sdk_grid[entry->i][entry->j].isBase = 1;
   _i = i = entry->i;
   _j = j = entry->j;
 
@@ -488,8 +518,8 @@ void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
   {
     case GDK_0 :
     case GDK_Delete :
-      if (entry->lock == 1) \
-        return; \
+      if (entry->lock == 1 & editing_mode == 0)
+        return;
       gtk_label_set_text(GTK_LABEL(entry->widget), "");
       sdk_grid[entry->i][entry->j].value = 0;
       sdk_grid[entry->i][entry->j].isBase = 0;
@@ -523,30 +553,30 @@ void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
       UPDATE_ENTRY(9);
       break;
     case GDK_Up :
-      if (j == 0) _j = 8; else --_j;
-      UPDATE_SIGNALS;
-      break;
-    case GDK_Down :
-      if (j == 8) _j = 0; else ++_j;
-      UPDATE_SIGNALS;
-      break;
-    case GDK_Left :
       if (i == 0) _i = 8; else --_i;
       UPDATE_SIGNALS;
       break;
-    case GDK_Right :
+    case GDK_Down :
       if (i == 8) _i = 0; else ++_i;
+      UPDATE_SIGNALS;
+      break;
+    case GDK_Left :
+      if (j == 0) _j = 8; else --_j;
+      UPDATE_SIGNALS;
+      break;
+    case GDK_Right :
+      if (j == 8) _j = 0; else ++_j;
       UPDATE_SIGNALS;
       break;
   }
 }
 
-void focus_in_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
+UNUSED void focus_in_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
   GTK_WIDGET_SET_FLAGS (widget, GTK_HAS_FOCUS);
 }
 
-void focus_out_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
+UNUSED void focus_out_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
   GTK_WIDGET_UNSET_FLAGS (widget, GTK_HAS_FOCUS);
 }
@@ -562,10 +592,10 @@ int sdk_gui_init(int argc, char **argv)
   GtkWidget* table2 = NULL;
 
   GtkWidget* txt = NULL;
-  GtkWidget* menubar = NULL;
   GtkWidget* vbox = NULL;
   GtkWidget* resolve_btn = NULL;
   GtkWidget* console = NULL;
+  GtkWidget* menu_bar = NULL;
   PangoAttribute *attr;
   PangoAttrList *attr_lst;
   GtkWidget *event_box = NULL;
@@ -600,7 +630,7 @@ int sdk_gui_init(int argc, char **argv)
     /* create the secondary tables */
     table2 = gtk_table_new(3,3,TRUE);
     gtk_container_add(GTK_CONTAINER(frame), table2);
-    gtk_table_attach(GTK_TABLE(table1), frame, i/3, (i/3)+1, (i%3), (i%3)+1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
+    gtk_table_attach(GTK_TABLE(table1), frame, i%3, (i%3)+1, (i/3), (i/3)+1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
 
     for (j=0; j<9; ++j)
     {
@@ -612,8 +642,8 @@ int sdk_gui_init(int argc, char **argv)
       gtk_label_set_justify(GTK_LABEL(txt), GTK_JUSTIFY_CENTER);
       gtk_widget_set_size_request(event_box, 50, 50);
 
-      _j = (i%3)*3 + ((j%3));
       _i =(i/3)*3 + ((j/3));
+      _j = (i%3)*3 + ((j%3));
       sdk_grid[_i][_j].widget = txt;
       sdk_grid[_i][_j].event_box = event_box;
       sdk_grid[_i][_j].i = _i;
@@ -637,13 +667,15 @@ int sdk_gui_init(int argc, char **argv)
       }
 
       gtk_container_add(GTK_CONTAINER(event_box), txt);
-      gtk_table_attach(GTK_TABLE(table2), event_box, j/3, (j/3)+1, j%3, (j%3)+1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
+      gtk_table_attach(GTK_TABLE(table2), event_box, j%3, (j%3)+1, j/3, (j/3)+1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
 
       /* add signals to the event_box */
       g_signal_connect(G_OBJECT(event_box), "button_press_event", G_CALLBACK(button_press), (gpointer) &sdk_grid[_i][_j]);
       g_signal_connect(G_OBJECT(event_box), "key_press_event", G_CALLBACK(key_press), (gpointer) &sdk_grid[_i][_j]);
-      g_signal_connect(G_OBJECT(event_box), "focus_in_event", G_CALLBACK(focus_in_event), NULL);
-      g_signal_connect(G_OBJECT(event_box), "focus_out_event", G_CALLBACK(focus_out_event), NULL);
+
+      /* signal connections not needed */
+//      g_signal_connect(G_OBJECT(event_box), "focus_in_event", G_CALLBACK(focus_in_event), NULL);
+//      g_signal_connect(G_OBJECT(event_box), "focus_out_event", G_CALLBACK(focus_out_event), NULL);
     }
   }
 
@@ -651,8 +683,8 @@ int sdk_gui_init(int argc, char **argv)
   gtk_container_add(GTK_CONTAINER(MainWindow), vbox);
   gtk_widget_show(vbox);
 
-  createMenu(MainWindow, &menubar);
-  gtk_widget_show(menubar);
+  menu_bar = createMenu(MainWindow);
+  gtk_widget_show(menu_bar);
 
   resolve_btn = gtk_button_new_with_label("Resolve now!");
   gtk_widget_show(resolve_btn);
@@ -668,7 +700,7 @@ int sdk_gui_init(int argc, char **argv)
   appendConsole(welcome_msg);
   gtk_container_add (GTK_CONTAINER (scroll), GTK_WIDGET (console));
 
-  gtk_box_pack_start (GTK_BOX (vbox), menubar, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (vbox), menu_bar, FALSE, FALSE, 0);
   gtk_box_pack_start (GTK_BOX (vbox), table1, FALSE, FALSE, 2);
   gtk_box_pack_start (GTK_BOX (vbox), resolve_btn, FALSE, FALSE, 2);
   gtk_box_pack_start (GTK_BOX (vbox), scroll, TRUE, TRUE, 0);
@@ -682,6 +714,7 @@ int sdk_gui_init(int argc, char **argv)
 
   resetGrid();
 
+//  gtk_label_set_text(GTK_LABEL(sdk_grid[3][2].widget), "2");
   gtk_main();
 
   return EXIT_SUCCESS;

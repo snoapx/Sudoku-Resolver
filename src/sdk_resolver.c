@@ -324,7 +324,6 @@ sdk_resolveGrid(struct sdk_grid_entry_s grid[][9],
 void
 sdk_resetGrid(struct sdk_grid_entry_s grid[][9], int i, int j)
 {
-
   fillPossibleValues(&grid[i][j]);
   grid[i][j].isBase = 0;
   grid[i][j].value = 0;
