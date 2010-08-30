@@ -37,13 +37,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <gtk/gtk.h>
+#include <glib.h>
 #include <sdk_resolver.h>
+#include <gtk/gtkmain.h>
 #include <string.h>
 #include <gdk/gdkkeysyms.h>
 
 #include "sdk_gui.h"
 #include "sdk_colors.h"
 #include "sdk_error.h"
+
+/* program mode */
+enum sdk_program_mode
+{
+  EDIT_MODE,
+  PLAY_MODE,
+};
+
 
 /* console buffer at the bottom of the sdk grid */
 static GtkTextBuffer* console_buff = NULL;
@@ -60,8 +70,15 @@ static GtkItemFactory* item_factory = NULL;
 /* previous entry selected in the sdk */
 static struct sdk_grid_entry_s *prev_selected_entry = NULL;
 /* if the grid is in editing mode */
-static int editing_mode = 0;
+//static int editing_mode = 0;
+static int playing_mode = 0;
 //static int new_grid_mode = 1;
+
+static GtkWidget* play_panel;
+static GtkWidget* edit_panel;
+static GtkWidget* time_elapsed = 0;
+static GTimer* timer = NULL;
+static guint timer_id;
 
 /* grid shown by the application */
 static struct sdk_grid_entry_s sdk_grid[9][9];
@@ -71,6 +88,13 @@ static struct sdk_grid_entry_s sdk_result[9][9];
 static GtkItemFactoryEntry menu_items[];
 void checkConstraints();
 static gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data);
+
+static void quitApplication()
+{
+  if (remove(SDK_LOCK) == -1)
+    fprintf(stderr, "Cannot remove lock file!");
+  gtk_main_quit();
+}
 
 /* show a dialog box */
 static void showDialogBox(char* txt, int error, GtkMessageType type)
@@ -82,7 +106,7 @@ static void showDialogBox(char* txt, int error, GtkMessageType type)
   if (type == GTK_MESSAGE_ERROR)
     sprintf(buff, "Error code : %s\nError descritpion : %s\n\n%s", sdk_error[error].err_code, sdk_error[error].err_desc, txt);
   else if (type == GTK_MESSAGE_INFO)
-    sprintf(buff, "Information : %s", txt);
+    sprintf(buff, "Information :\n%s", txt);
 
   dialog = gtk_message_dialog_new(GTK_WINDOW(MainWindow),
       GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -107,7 +131,7 @@ sdk_gui_load_grid(struct sdk_grid_entry_s grid[][9])
 {
   int i, j;
   char num[10];
-  GtkWidget* edit_grid;
+//  GtkWidget* edit_grid;
 
   for (i=0; i<9; ++i)
   {
@@ -118,18 +142,16 @@ sdk_gui_load_grid(struct sdk_grid_entry_s grid[][9])
 
       if (grid[i][j].value == 0) {
         gtk_label_set_text(GTK_LABEL(sdk_grid[i][j].widget), "");
-        sdk_grid[i][j].lock = 0;
       } else {
         sprintf(num, "%d", grid[i][j].value);
         gtk_label_set_text(GTK_LABEL(sdk_grid[i][j].widget), num);
-        sdk_grid[i][j].lock = 1;
         if (!sdk_grid[i][j].isBase)
           gtk_widget_modify_fg (sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_blue);
       }
     }
   }
-  edit_grid = gtk_item_factory_get_widget(GTK_ITEM_FACTORY(item_factory), "/Options/Edit Grid");
-  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(edit_grid), 0);
+//  edit_grid = gtk_item_factory_get_widget(GTK_ITEM_FACTORY(item_factory), "/Options/Edit Grid");
+//  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(edit_grid), 0);
 }
 
 
@@ -309,6 +331,22 @@ static void showOpenFile()
   gtk_widget_destroy (file_chooser);
 }
 
+/* check if the grid is well completed or not */
+static int checkGrid()
+{
+  int i, j;
+
+  for (i=0; i<9; ++i)
+  {
+    for (j=0; j<9; ++j)
+    {
+      if (sdk_grid[i][j].value != sdk_result[i][j].value)
+          return 0;
+    }
+  }
+  return 1;
+}
+
 /* reset all grid's entries to char "" */
 static void resetGrid()
 {
@@ -323,7 +361,6 @@ static void resetGrid()
       sdk_resetGrid(sdk_grid, i, j);
       txt = sdk_grid[i][j].widget;
       gtk_label_set_text(GTK_LABEL(txt), "");
-      sdk_grid[i][j].lock = 0;
     }
   }
 
@@ -368,17 +405,7 @@ static void showGenerateGrid(gpointer callback_data, guint callback_action, GtkW
   closeProgressBar();
 }
 
-static void setGridEditable(gpointer callback_data,
-    guint callback_action, GtkWidget *menu_item)
-{
-  if(GTK_CHECK_MENU_ITEM(menu_item)->active)
-    editing_mode = 1;
-  else
-    editing_mode = 0;
-
-  checkConstraints();
-}
-
+/* resolve a Sudoku grid */
 static void resolveGrid()
 {
   char buff[256];
@@ -408,6 +435,95 @@ static void showManual(gpointer callback_data, guint callback_action, GtkWidget 
   showDialogBox("Function not implemented", 0, GTK_MESSAGE_INFO);
 }
 
+  gint
+timeout_handler(gpointer widget)
+{
+  char line[256];
+
+  sprintf(line, "Time elapsed : %d seconds", (int) g_timer_elapsed(timer, NULL));
+  gtk_label_set_text(GTK_LABEL(time_elapsed), line);
+  return TRUE;
+}
+
+static void resetNotBaseEntries()
+{
+  int i, j;
+
+  if (playing_mode)
+  {
+    for (i=0;i<9;++i)
+    {
+      for (j=0;j<9;++j)
+      {
+        if (!sdk_grid[i][j].isBase)
+        {
+          sdk_grid[i][j].value = 0;
+          gtk_label_set_text(GTK_LABEL(sdk_grid[i][j].widget), "");
+        }
+      }
+    }
+  checkConstraints();
+  }
+}
+
+
+static void togglePanel(enum sdk_program_mode mode)
+{
+  GtkWidget* play_grid;
+  play_grid = gtk_item_factory_get_widget(GTK_ITEM_FACTORY(item_factory), "/Play/Play with this grid");
+
+  if (mode == EDIT_MODE) {
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(play_grid), 0);
+    playing_mode = 0;
+
+    if (timer) {
+      g_timer_destroy(timer);
+      g_source_remove(timer_id);
+      timer = NULL;
+    }
+    gtk_widget_set_visible(play_panel, 0);
+    gtk_widget_set_visible(edit_panel, 1);
+  } else {
+    /* check if the sudoku has a solution */
+    int nb_solutions = 0;
+    sdk_resolveGrid(sdk_grid, sdk_result, &nb_solutions, NULL, 0);
+    fprintf(stderr, "Number of solution %d", nb_solutions);
+    if (nb_solutions != 1)
+    {
+      gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(play_grid), 0);
+      showDialogBox(NULL, SDK_ERR_NO_SOLUTION, GTK_MESSAGE_ERROR );
+      return;
+    }
+
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(play_grid), 1);
+    playing_mode = 1;
+    timer = g_timer_new();
+
+    /* start the timer */
+    timer_id = g_timeout_add(1000, (gpointer) timeout_handler, NULL);
+    timeout_handler(timer);
+
+    gtk_widget_set_visible(edit_panel, 0);
+    gtk_widget_set_visible(play_panel, 1);
+  }
+}
+
+static void showPlayGrid(gpointer callback_data, guint callback_action, GtkWidget *widget)
+{
+
+  if(GTK_CHECK_MENU_ITEM(widget)->active)
+  {
+    togglePanel(PLAY_MODE);
+  } else {
+    togglePanel(EDIT_MODE);
+  }
+}
+
+static void stopPlaying()
+{
+  togglePanel(EDIT_MODE);
+}
+
 static GtkItemFactoryEntry menu_items[] = {
   {"/File", NULL, NULL, 0, "<Branch>"},
   {"/File/New", NULL, showNewFile, 0, "<StockItem>", GTK_STOCK_NEW},
@@ -421,11 +537,15 @@ static GtkItemFactoryEntry menu_items[] = {
   {"/File/Open", NULL, showOpenFile, 0, "<StockItem>", GTK_STOCK_OPEN},
   {"/File/Save", NULL, showSaveFile, 0, "<StockItem>", GTK_STOCK_SAVE},
   {"/File/sep1", NULL, NULL, 0, "<Separator>"},
-  {"/File/Quit", NULL, gtk_main_quit, 0, "<StockItem>", GTK_STOCK_QUIT},
+  {"/File/Quit", NULL, quitApplication, 0, "<StockItem>", GTK_STOCK_QUIT},
+
+  {"/Play", NULL, NULL, 0, "<Branch>"},
+  {"/Play/Play with this grid", NULL, showPlayGrid, 0, "<CheckItem>"},
+  {"/Play/Reset all entries", NULL, resetNotBaseEntries, 0, NULL},
 
   {"/Options", NULL, NULL, 0, "<Branch>"},
   {"/Options/Show console", NULL, showConsole, 0, "<CheckItem>"},
-  {"/Options/Edit Grid", NULL, setGridEditable, 0, "<CheckItem>"},
+  //  {"/Options/Edit Grid", NULL, setGridEditable, 0, "<CheckItem>"},
 
   {"/Help", NULL, NULL, 0, "<Branch>"},
   {"/Help/Manual", NULL, showManual, 0, "<StockItem>", GTK_STOCK_HELP},
@@ -458,7 +578,7 @@ static gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
   }
 
   prev_selected_entry = (struct sdk_grid_entry_s*) data;
-//  fprintf(stderr, "i=%d, j=%d", prev_selected_entry->i, prev_selected_entry->j);
+  //  fprintf(stderr, "i=%d, j=%d", prev_selected_entry->i, prev_selected_entry->j);
   gtk_widget_grab_focus(widget);
 
   return TRUE;
@@ -472,35 +592,34 @@ void checkConstraints()
   {
     for (j = 0; j < 9; ++j)
     {
-      if (sdk_grid[i][j].isBase) {
-        if (sdk_checkConstrains(sdk_grid, &sdk_grid[i][j], sdk_grid[i][j].value) == 0) {
-          gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_dark_red);
-        } else if (sdk_grid[i][j].lock == 0) {
-          if (editing_mode == 0)
-            gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_blue);
-          else
-          {
-            gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_black);
-            sdk_grid[i][j].lock = 1;
-          }
-        } else if (sdk_grid[i][j].lock == 1) {
-          gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_black);
-        }
+      if (sdk_checkConstrains(sdk_grid, &sdk_grid[i][j], sdk_grid[i][j].value) == 0) {
+        gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_dark_red);
+      } else if (sdk_grid[i][j].isBase) {
+        gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_black);
+      } else {
+        gtk_widget_modify_fg(sdk_grid[i][j].widget, GTK_STATE_NORMAL, &c_blue);
       }
     }
   }
 }
 
 #define UPDATE_ENTRY(x) \
-  if (entry->lock == 1 & editing_mode == 0) \
+  if (entry->isBase == 1 & playing_mode == 1) \
     return; \
   gtk_label_set_text(GTK_LABEL(entry->widget), STR(x)); \
-  sdk_grid[entry->i][entry->j].isBase = 1; \
+  if ((playing_mode == 0) & (x != 0)) \
+    entry->isBase = 1; \
+  else \
+    entry->isBase = 0; \
   entry->value = x; \
-  checkConstraints();
+  checkConstraints(); \
+  if(checkGrid()) { \
+    sprintf(buff, "You found the correct solution in %d seconds!\nGood job!",(int) g_timer_elapsed(timer, NULL)); \
+    showDialogBox(buff, 0, GTK_MESSAGE_INFO); \
+  }
 
 #define UPDATE_SIGNALS \
-        button_press(sdk_grid[_i][_j].event_box, NULL, &sdk_grid[_i][_j]);
+  button_press(sdk_grid[_i][_j].event_box, NULL, &sdk_grid[_i][_j]);
 
 //      g_signal_emit_by_name(G_OBJECT(entry->event_box), "focus_out_event"); \
 //      g_signal_emit_by_name(G_OBJECT(sdk_grid[_i][_j].event_box), "focus_in_event");
@@ -510,6 +629,7 @@ void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
   struct sdk_grid_entry_s* entry = data;
   int i, j, _i, _j;
+  char buff[256];
 
   _i = i = entry->i;
   _j = j = entry->j;
@@ -518,7 +638,7 @@ void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
   {
     case GDK_0 :
     case GDK_Delete :
-      if (entry->lock == 1 & editing_mode == 0)
+      if (entry->isBase == 1 & playing_mode == 1)
         return;
       gtk_label_set_text(GTK_LABEL(entry->widget), "");
       sdk_grid[entry->i][entry->j].value = 0;
@@ -581,6 +701,7 @@ UNUSED void focus_out_event(GtkWidget *widget, GdkEventKey *event, gpointer data
   GTK_WIDGET_UNSET_FLAGS (widget, GTK_HAS_FOCUS);
 }
 
+
 /**
  *  sdk_gui_init()
  * @brief Initialize the Sudoku Resolver gui
@@ -594,6 +715,7 @@ int sdk_gui_init(int argc, char **argv)
   GtkWidget* txt = NULL;
   GtkWidget* vbox = NULL;
   GtkWidget* resolve_btn = NULL;
+  GtkWidget* stop_btn = NULL;
   GtkWidget* console = NULL;
   GtkWidget* menu_bar = NULL;
   PangoAttribute *attr;
@@ -674,8 +796,8 @@ int sdk_gui_init(int argc, char **argv)
       g_signal_connect(G_OBJECT(event_box), "key_press_event", G_CALLBACK(key_press), (gpointer) &sdk_grid[_i][_j]);
 
       /* signal connections not needed */
-//      g_signal_connect(G_OBJECT(event_box), "focus_in_event", G_CALLBACK(focus_in_event), NULL);
-//      g_signal_connect(G_OBJECT(event_box), "focus_out_event", G_CALLBACK(focus_out_event), NULL);
+      //      g_signal_connect(G_OBJECT(event_box), "focus_in_event", G_CALLBACK(focus_in_event), NULL);
+      //      g_signal_connect(G_OBJECT(event_box), "focus_out_event", G_CALLBACK(focus_out_event), NULL);
     }
   }
 
@@ -686,8 +808,18 @@ int sdk_gui_init(int argc, char **argv)
   menu_bar = createMenu(MainWindow);
   gtk_widget_show(menu_bar);
 
+  /* resolve panel */
+  edit_panel = gtk_vbox_new(FALSE,0);
   resolve_btn = gtk_button_new_with_label("Resolve now!");
-  gtk_widget_show(resolve_btn);
+  gtk_container_add(GTK_CONTAINER(edit_panel), resolve_btn);
+
+  /* play panel */
+  play_panel = gtk_vbox_new(FALSE,0);
+  stop_btn = gtk_button_new_with_label("Stop the game!");
+  time_elapsed = gtk_label_new(NULL);
+  gtk_container_add(GTK_CONTAINER(play_panel), stop_btn);
+  gtk_container_add(GTK_CONTAINER(play_panel), time_elapsed);
+
 
   scroll = gtk_scrolled_window_new(NULL, NULL);
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scroll),
@@ -702,22 +834,24 @@ int sdk_gui_init(int argc, char **argv)
 
   gtk_box_pack_start (GTK_BOX (vbox), menu_bar, FALSE, FALSE, 0);
   gtk_box_pack_start (GTK_BOX (vbox), table1, FALSE, FALSE, 2);
-  gtk_box_pack_start (GTK_BOX (vbox), resolve_btn, FALSE, FALSE, 2);
+  gtk_box_pack_start (GTK_BOX (vbox), edit_panel, FALSE, FALSE, 2);
+  gtk_box_pack_start (GTK_BOX (vbox), play_panel, FALSE, FALSE, 2);
   gtk_box_pack_start (GTK_BOX (vbox), scroll, TRUE, TRUE, 0);
 
   /* Signals */
-  g_signal_connect(G_OBJECT(MainWindow), "delete-event", G_CALLBACK(gtk_main_quit), NULL);
+  g_signal_connect(G_OBJECT(MainWindow), "delete-event", G_CALLBACK(quitApplication), NULL);
   g_signal_connect(G_OBJECT(resolve_btn), "clicked", G_CALLBACK(resolveGrid), NULL);
+  g_signal_connect(G_OBJECT(stop_btn), "clicked", G_CALLBACK(stopPlaying), NULL);
 
   gtk_widget_show_all(MainWindow);
   gtk_widget_hide(scroll);
+  gtk_widget_hide(play_panel);
 
   resetGrid();
 
-//  gtk_label_set_text(GTK_LABEL(sdk_grid[3][2].widget), "2");
   gtk_main();
 
-  return EXIT_SUCCESS;
+  return 0;
 }
 
 #endif

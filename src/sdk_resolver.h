@@ -46,6 +46,7 @@
 #define SDK_VERSION_MINOR 0
 #define SDK_VERSION_RC 5
 #define SDK_VERSION XSTR(SDK_VERSION_MAJOR)"."XSTR(SDK_VERSION_MINOR)"-rc"XSTR(SDK_VERSION_RC)
+#define SDK_LOCK "/tmp/sdk.lock"
 
 #define SDK_COMPILE_DATE __DATE__
 #define SDK_COMPILE_TIME __TIME__
@@ -100,7 +101,6 @@ struct sdk_grid_entry_s
 
   int isBase;
   int possibleValues[10];
-  int lock;
 
 #ifdef GTK_ENABLE
   GtkWidget* widget;

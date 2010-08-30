@@ -267,7 +267,8 @@ sdk_resolveGrid_recurs(struct sdk_grid_entry_s grid[][9],
     {
       if (sdk_checkConstrains(grid, entry, entry->possibleValues[i]))
       {
-        ++ *nb_computations;
+        if (nb_computations)
+          ++ *nb_computations;
 
         entry->value = entry->possibleValues[i];
         next = sdk_nextEntry(grid, entry);

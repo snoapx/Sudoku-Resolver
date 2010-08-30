@@ -37,6 +37,7 @@
 #define SDK_ERR_FILE_NOT_FOUND 1
 #define SDK_ERR_WRONG_GRID_FORMAT 2
 #define SDK_ERR_UNKNOWN_CHAR 3
+#define SDK_ERR_NO_SOLUTION 4
 
 struct sdk_error_line
 {
@@ -49,6 +50,7 @@ const struct sdk_error_line sdk_error[] = {
   {"SDK_ERR_OK", "Command executed with success"},
   {"SDK_ERR_FILE_NOT_FOUND", "File not found"},
   {"SDK_ERR_WRONG_GRID_FORMAT", "Wrong grid format"},
-  {"SDK_ERR_UNKNOWN_CHAR", "Unknown char found"}
+  {"SDK_ERR_UNKNOWN_CHAR", "Unknown char found in the grid"},
+  {"SDK_ERR_NO_SOLUTION", "No solution found for the current grid"},
 };
 

@@ -34,6 +34,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+
 
 #include "sdk_resolver.h"
 
@@ -71,6 +73,31 @@ int main(int argc, char** argv)
     }
   } else {
 #ifdef GTK_ENABLE
+    FILE *fp = fopen(SDK_LOCK, "rb");
+
+    if (fp == NULL)
+    {
+      if (errno == ENOENT)
+      {
+        FILE *fpw = fopen(SDK_LOCK, "wrb");
+        if (fpw == NULL)
+        {
+          fprintf(stderr, "Cannot write into the current directory");
+          return(EXIT_FAILURE);
+        } else {
+          fputs("sudoku", fpw);
+          fclose(fpw);
+        }
+      } else {
+        fprintf(stderr, "Cannot write into the current directory");
+        return(EXIT_FAILURE);
+      }
+    } else {
+      fprintf(stderr, "Cannot launch 2 instances of the program.\nIf the program has crashed the last time and that you know what you are doing, remove the file "SDK_LOCK"!\n");
+      fclose(fp);
+      return(EXIT_FAILURE);
+    }
+
     sdk_gui_init(argc, argv);
 #else
     print_usage(argv[0]);
