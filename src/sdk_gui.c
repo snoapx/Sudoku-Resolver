@@ -73,9 +73,6 @@ static GtkItemFactory* item_factory = NULL;
 /* previous entry selected in the sdk */
 static struct sdk_grid_entry_s *prev_selected_entry = NULL;
 /* if the grid is in editing mode */
-//static int editing_mode = 0;
-static int playing_mode = 0;
-//static int new_grid_mode = 1;
 
 static GtkWidget* play_panel;
 static GtkWidget* edit_panel;
@@ -89,7 +86,6 @@ static struct sdk_grid_entry_s sdk_grid[9][9];
 static struct sdk_grid_entry_s sdk_result[9][9];
 
 static GtkItemFactoryEntry menu_items[];
-void checkConstraints();
 
 /* handler when the application leaves */
 static void quitApplication()
@@ -429,7 +425,7 @@ static void resolveGrid()
   {
     sprintf(buff, "Solution found in %d computations!\n", nb_computations);
     sdk_gui_load_grid(sdk_result);
-    checkConstraints();
+    sdk_gui_check_constraints();
 
     showDialogBox(buff, 0, GTK_MESSAGE_INFO);
   }
@@ -473,7 +469,7 @@ static void resetNotBaseEntries()
         }
       }
     }
-  checkConstraints();
+    sdk_gui_check_constraints();
   }
 }
 
@@ -481,11 +477,15 @@ static void resetNotBaseEntries()
 static void togglePanel(enum sdk_program_mode mode)
 {
   GtkWidget* play_grid;
+  GtkWidget* sidebar;
+
   play_grid = gtk_item_factory_get_widget(GTK_ITEM_FACTORY(item_factory), "/Play/Play with this grid");
+  sidebar = gtk_item_factory_get_widget(GTK_ITEM_FACTORY(item_factory), "/Play/Show sidebar");
 
   if (mode == EDIT_MODE) {
     appendConsole("Switched to editing mode\n");
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(play_grid), 0);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(sidebar), 0);
     resetNotBaseEntries();
     playing_mode = 0;
 
@@ -494,8 +494,9 @@ static void togglePanel(enum sdk_program_mode mode)
       g_source_remove(timer_id);
       timer = NULL;
     }
-    gtk_widget_set_visible(play_panel, 0);
     gtk_widget_set_visible(edit_panel, 1);
+    gtk_widget_set_visible(play_panel, 0);
+    gtk_widget_set_visible(sidebar, 0);
   } else {
     /* check if the sudoku has a solution */
     int nb_solutions = 0;
@@ -509,6 +510,7 @@ static void togglePanel(enum sdk_program_mode mode)
 
     appendConsole("Switched to playing mode\n");
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(play_grid), 1);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(sidebar), 1);
     playing_mode = 1;
     timer = g_timer_new();
 
@@ -518,6 +520,7 @@ static void togglePanel(enum sdk_program_mode mode)
 
     gtk_widget_set_visible(edit_panel, 0);
     gtk_widget_set_visible(play_panel, 1);
+    gtk_widget_set_visible(sidebar, 1);
   }
 }
 
@@ -597,7 +600,7 @@ gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
   return TRUE;
 }
 
-void checkConstraints()
+void sdk_gui_check_constraints()
 {
   int i, j;
 
@@ -624,9 +627,9 @@ void checkConstraints()
     entry->isBase = 1; \
   else \
     entry->isBase = 0; \
+  sdk_gui_sidebar_add_event(entry->i, entry->j, x, entry->value); \
   entry->value = x; \
-  checkConstraints(); \
-  sdk_gui_sidebar_add_event(entry->i, entry->j, x); \
+  sdk_gui_check_constraints(); \
   sdk_gui_sidebar_refresh_list(); \
   if(checkGrid() & playing_mode) { \
     sprintf(buff, "You found the correct solution in %d seconds!\nGood job!",(int) g_timer_elapsed(timer, NULL)); \
@@ -656,9 +659,11 @@ void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
       if (entry->isBase == 1 & playing_mode == 1)
         return;
       gtk_label_set_text(GTK_LABEL(entry->widget), "");
+      sdk_gui_sidebar_add_event(entry->i, entry->j, 0, sdk_grid[entry->i][entry->j].value);
       sdk_grid[entry->i][entry->j].value = 0;
       sdk_grid[entry->i][entry->j].isBase = 0;
-      checkConstraints();
+      sdk_gui_check_constraints();
+      sdk_gui_sidebar_refresh_list();
       break;
     case GDK_1 :
       UPDATE_ENTRY(1);
@@ -716,11 +721,6 @@ UNUSED void focus_out_event(GtkWidget *widget, GdkEventKey *event, gpointer data
   GTK_WIDGET_UNSET_FLAGS (widget, GTK_HAS_FOCUS);
 }
 
-
-/**
- *  sdk_gui_init()
- * @brief Initialize the Sudoku Resolver gui
- */
 int sdk_gui_init(int argc, char **argv)
 {
   GtkWidget* grid = NULL;
@@ -732,6 +732,8 @@ int sdk_gui_init(int argc, char **argv)
   GtkWidget* console = NULL;
   GtkWidget* menu_bar = NULL;
   char welcome_msg[256];
+
+  playing_mode = 0;
 
   /* initialiszation of the GTK+ window*/
   gtk_init(&argc, &argv);
@@ -745,7 +747,7 @@ int sdk_gui_init(int argc, char **argv)
   vbox = gtk_vbox_new(FALSE, 0);
   hbox = gtk_hbox_new(FALSE, 0);
 
-  sidebar = sdk_gui_init_sidebar();
+  sidebar = sdk_gui_init_sidebar(sdk_grid, sdk_result);
 
   gtk_container_add(GTK_CONTAINER(hbox), vbox);
   gtk_container_add(GTK_CONTAINER(hbox), sidebar);

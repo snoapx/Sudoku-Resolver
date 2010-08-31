@@ -41,6 +41,7 @@ static GdkColor c_gray = { 10, 0xaaaa, 0xaaaa, 0xaaaa };
 static GdkColor c_light_gray = { 10, 0xdddd, 0xdddd, 0xdddd };
 static GdkColor c_dark_gray = { 10, 0xaaaa, 0xaaaa, 0xaaaa };
 static GdkColor c_red= { 10, 0xffff, 0xaaaa, 0xaaaa};
+static GdkColor c_green= { 10, 0x6666, 0xcccc, 0x9999};
 static GdkColor c_dark_red= { 10, 0xffff, 0x0000, 0x0000};
 static GdkColor c_black= { 10, 0x0000, 0x0000, 0x0000};
 static GdkColor c_white= { 10, 0xffff, 0xffff, 0xffff};

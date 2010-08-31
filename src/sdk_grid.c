@@ -24,6 +24,9 @@
 #include "sdk_colors.h"
 #include "sdk_gui.h"
 
+/* grid shown by the application */
+static struct sdk_grid_entry_s (*sdk_grid)[9];
+
 GtkWidget* sdk_gui_init_grid(struct sdk_grid_entry_s grid[][9])
 {
   GtkWidget* table1 = NULL;
@@ -35,6 +38,8 @@ GtkWidget* sdk_gui_init_grid(struct sdk_grid_entry_s grid[][9])
   GtkWidget *event_box = NULL;
   GtkWidget *frame = NULL;
   int i, j, _i, _j;
+
+  sdk_grid = grid;
 
   /* pango style */
   attr = pango_attr_size_new(20 * PANGO_SCALE);
@@ -104,6 +109,7 @@ GtkWidget* sdk_gui_init_grid(struct sdk_grid_entry_s grid[][9])
   }
   return table1;
 }
+
 
 #endif
 

@@ -37,12 +37,15 @@
 
 #include <gtk/gtk.h>
 
+int playing_mode;
 
 /**
  *  sdk_gui_init()
  * \brief Initialize the Sudoku GUI
  */
 int sdk_gui_init(int argc, char **argv);
+void sdk_gui_check_constraints();
+
 void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data);
 gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data);
 
