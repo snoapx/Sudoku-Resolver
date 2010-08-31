@@ -32,10 +32,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>."
  */
 
+#ifndef __SDK_COLORS_H
+#define __SDK_COLORS_H
+
+
 /* GTK colors */
-UNUSED static GdkColor c_gray = { 10, 0xaaaa, 0xaaaa, 0xaaaa };
+static GdkColor c_gray = { 10, 0xaaaa, 0xaaaa, 0xaaaa };
 static GdkColor c_light_gray = { 10, 0xdddd, 0xdddd, 0xdddd };
-UNUSED static GdkColor c_dark_gray = { 10, 0xaaaa, 0xaaaa, 0xaaaa };
+static GdkColor c_dark_gray = { 10, 0xaaaa, 0xaaaa, 0xaaaa };
 static GdkColor c_red= { 10, 0xffff, 0xaaaa, 0xaaaa};
 static GdkColor c_dark_red= { 10, 0xffff, 0x0000, 0x0000};
 static GdkColor c_black= { 10, 0x0000, 0x0000, 0x0000};
@@ -43,3 +47,4 @@ static GdkColor c_white= { 10, 0xffff, 0xffff, 0xffff};
 static GdkColor c_dark= { 10, 0x6666, 0x6666, 0x6666};
 static GdkColor c_blue= { 10, 0x3333, 0x6666, 0xCCCC};
 
+#endif

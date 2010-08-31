@@ -58,15 +58,13 @@ UNUSED
   static void sdk_error (const char *fmt, ...)
 {
   va_list ap;
-  char line[ERROR_BUF];
   char vline[ERROR_BUF];
 
   va_start(ap, fmt);
   vsprintf(vline, fmt, ap);
   va_end(ap);
 
-  sprintf(line, "ERROR: %s\n", vline);
-  fprintf(stderr, line);
+  fprintf(stderr, "ERROR: %s\n", vline);
 
   abort();
 }

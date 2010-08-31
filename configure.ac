@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.67])
+AC_PREREQ([2.65])
 AC_INIT([sdk_resolver],[1.0],[didelot.sylvai@gmail.com])
 AC_CONFIG_AUX_DIR([build_aux])
 AM_INIT_AUTOMAKE([1.9.6 -Wall -Werror dist-bzip2])
@@ -10,18 +10,19 @@ AC_CONFIG_MACRO_DIR([m4])
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG_CXX
 AM_PROG_CC_C_O
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-#AC_PROG_RANLIB
+AC_PROG_RANLIB
 LT_INIT
 
 # Checks for GTK+
 AC_ARG_ENABLE([gtk],AS_HELP_STRING([--enable-gtk],[Enable GTK+
-               support]),[enable_gtk=$enableval],[enable_gtk="yes"])
+               support]),[enable_gtk=$enableval],[disable_gtk="no"])
 
-if test "x$enable_gtk" = "xyes"
+if test "x$disable_gtk" = "xno"
 then
   AM_PATH_GTK_2_0([2.10.0],,AC_MSG_ERROR([Gtk+ 2.10.0 or higher required.]))
   GTK_ENABLE="-DGTK_ENABLE"

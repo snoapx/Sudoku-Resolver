@@ -44,6 +44,7 @@
 #include <gdk/gdkkeysyms.h>
 
 #include "sdk_gui.h"
+#include "sdk_sidebar.h"
 #include "sdk_colors.h"
 #include "sdk_error.h"
 
@@ -65,6 +66,8 @@ static GtkWidget *MainWindow = NULL;
 static GtkWidget *popup = NULL;
 /* waiting progress bar */
 static GtkWidget *progress_bar;
+/* sidebar */
+static GtkWidget* sidebar = NULL;
 /* menu bar */
 static GtkItemFactory* item_factory = NULL;
 /* previous entry selected in the sdk */
@@ -89,6 +92,7 @@ static GtkItemFactoryEntry menu_items[];
 void checkConstraints();
 static gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data);
 
+/* handler when the application leaves */
 static void quitApplication()
 {
   if (remove(SDK_LOCK) == -1)
@@ -112,7 +116,7 @@ static void showDialogBox(char* txt, int error, GtkMessageType type)
       GTK_DIALOG_DESTROY_WITH_PARENT,
       type,
       GTK_BUTTONS_OK,
-      buff);
+      "%s", buff);
   gtk_dialog_run(GTK_DIALOG(dialog));
   gtk_widget_destroy(dialog);
 }
@@ -126,12 +130,12 @@ static void appendConsole(char* txt)
   gtk_text_buffer_insert(console_buff, &ei, txt, -1);
 }
 
+/* load a grid to the gui */
   void
 sdk_gui_load_grid(struct sdk_grid_entry_s grid[][9])
 {
   int i, j;
   char num[10];
-//  GtkWidget* edit_grid;
 
   for (i=0; i<9; ++i)
   {
@@ -150,8 +154,6 @@ sdk_gui_load_grid(struct sdk_grid_entry_s grid[][9])
       }
     }
   }
-//  edit_grid = gtk_item_factory_get_widget(GTK_ITEM_FACTORY(item_factory), "/Options/Edit Grid");
-//  gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(edit_grid), 0);
 }
 
 
@@ -381,6 +383,16 @@ static void showConsole(gpointer callback_data,
     gtk_widget_hide(scroll);
 }
 
+
+static void showSidebar(gpointer callback_data,
+    guint callback_action, GtkWidget *menu_item)
+{
+  if(GTK_CHECK_MENU_ITEM(menu_item)->active)
+    gtk_widget_show(sidebar);
+  else
+    gtk_widget_hide(sidebar);
+}
+
 static void showGenerateGrid(gpointer callback_data, guint callback_action, GtkWidget *widget)
 
 {
@@ -542,11 +554,11 @@ static GtkItemFactoryEntry menu_items[] = {
 
   {"/Play", NULL, NULL, 0, "<Branch>"},
   {"/Play/Play with this grid", NULL, showPlayGrid, 0, "<CheckItem>"},
+  {"/Play/Show sidebar", NULL, showSidebar, 0, "<CheckItem>"},
   {"/Play/Reset all entries", NULL, resetNotBaseEntries, 0, NULL},
 
   {"/Options", NULL, NULL, 0, "<Branch>"},
   {"/Options/Show console", NULL, showConsole, 0, "<CheckItem>"},
-  //  {"/Options/Edit Grid", NULL, setGridEditable, 0, "<CheckItem>"},
 
   {"/Help", NULL, NULL, 0, "<Branch>"},
   {"/Help/Manual", NULL, showManual, 0, "<StockItem>", GTK_STOCK_HELP},
@@ -715,6 +727,9 @@ int sdk_gui_init(int argc, char **argv)
 
   GtkWidget* txt = NULL;
   GtkWidget* vbox = NULL;
+  GtkWidget* hbox = NULL;
+
+
   GtkWidget* resolve_btn = NULL;
   GtkWidget* stop_btn = NULL;
   GtkWidget* console = NULL;
@@ -802,8 +817,16 @@ int sdk_gui_init(int argc, char **argv)
     }
   }
 
+
+
   vbox = gtk_vbox_new(FALSE, 0);
-  gtk_container_add(GTK_CONTAINER(MainWindow), vbox);
+  hbox = gtk_hbox_new(FALSE, 0);
+
+  sidebar = sdk_gui_init_sidebar();
+
+  gtk_container_add(GTK_CONTAINER(hbox), vbox);
+  gtk_container_add(GTK_CONTAINER(hbox), sidebar);
+  gtk_container_add(GTK_CONTAINER(MainWindow), hbox);
   gtk_widget_show(vbox);
 
   menu_bar = createMenu(MainWindow);
@@ -847,6 +870,7 @@ int sdk_gui_init(int argc, char **argv)
   gtk_widget_show_all(MainWindow);
   gtk_widget_hide(scroll);
   gtk_widget_hide(play_panel);
+  gtk_widget_hide(sidebar);
 
   resetGrid();
 
