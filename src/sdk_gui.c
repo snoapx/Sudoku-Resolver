@@ -474,6 +474,7 @@ static void togglePanel(enum sdk_program_mode mode)
 
   if (mode == EDIT_MODE) {
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(play_grid), 0);
+    resetNotBaseEntries();
     playing_mode = 0;
 
     if (timer) {
@@ -604,7 +605,7 @@ void checkConstraints()
 }
 
 #define UPDATE_ENTRY(x) \
-  if (entry->isBase == 1 & playing_mode == 1) \
+  if (entry->isBase & playing_mode) \
     return; \
   gtk_label_set_text(GTK_LABEL(entry->widget), STR(x)); \
   if ((playing_mode == 0) & (x != 0)) \
@@ -613,7 +614,7 @@ void checkConstraints()
     entry->isBase = 0; \
   entry->value = x; \
   checkConstraints(); \
-  if(checkGrid()) { \
+  if(checkGrid() & playing_mode) { \
     sprintf(buff, "You found the correct solution in %d seconds!\nGood job!",(int) g_timer_elapsed(timer, NULL)); \
     showDialogBox(buff, 0, GTK_MESSAGE_INFO); \
   }
