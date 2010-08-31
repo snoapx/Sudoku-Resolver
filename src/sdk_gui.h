@@ -43,5 +43,7 @@
  * \brief Initialize the Sudoku GUI
  */
 int sdk_gui_init(int argc, char **argv);
+void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data);
+gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data);
 
 #endif

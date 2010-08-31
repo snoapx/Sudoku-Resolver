@@ -90,7 +90,6 @@ static struct sdk_grid_entry_s sdk_result[9][9];
 
 static GtkItemFactoryEntry menu_items[];
 void checkConstraints();
-static gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data);
 
 /* handler when the application leaves */
 static void quitApplication()
@@ -485,6 +484,7 @@ static void togglePanel(enum sdk_program_mode mode)
   play_grid = gtk_item_factory_get_widget(GTK_ITEM_FACTORY(item_factory), "/Play/Play with this grid");
 
   if (mode == EDIT_MODE) {
+    appendConsole("Switched to editing mode\n");
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(play_grid), 0);
     resetNotBaseEntries();
     playing_mode = 0;
@@ -500,7 +500,6 @@ static void togglePanel(enum sdk_program_mode mode)
     /* check if the sudoku has a solution */
     int nb_solutions = 0;
     sdk_resolveGrid(sdk_grid, sdk_result, &nb_solutions, NULL, 0);
-    fprintf(stderr, "Number of solution %d", nb_solutions);
     if (nb_solutions != 1)
     {
       gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(play_grid), 0);
@@ -508,6 +507,7 @@ static void togglePanel(enum sdk_program_mode mode)
       return;
     }
 
+    appendConsole("Switched to playing mode\n");
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(play_grid), 1);
     playing_mode = 1;
     timer = g_timer_new();
@@ -581,7 +581,7 @@ static GtkWidget* createMenu(GtkWidget* window)
   return gtk_item_factory_get_widget(item_factory, "<main>");
 }
 
-static gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
+gint button_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
   gtk_widget_modify_bg (widget, GTK_STATE_NORMAL, &c_red);
 
@@ -626,6 +626,8 @@ void checkConstraints()
     entry->isBase = 0; \
   entry->value = x; \
   checkConstraints(); \
+  sdk_gui_sidebar_add_event(entry->i, entry->j, x); \
+  sdk_gui_sidebar_refresh_list(); \
   if(checkGrid() & playing_mode) { \
     sprintf(buff, "You found the correct solution in %d seconds!\nGood job!",(int) g_timer_elapsed(timer, NULL)); \
     showDialogBox(buff, 0, GTK_MESSAGE_INFO); \
@@ -721,25 +723,15 @@ UNUSED void focus_out_event(GtkWidget *widget, GdkEventKey *event, gpointer data
  */
 int sdk_gui_init(int argc, char **argv)
 {
-  /*  Variables */
-  GtkWidget* table1 = NULL;
-  GtkWidget* table2 = NULL;
-
-  GtkWidget* txt = NULL;
+  GtkWidget* grid = NULL;
   GtkWidget* vbox = NULL;
   GtkWidget* hbox = NULL;
-
 
   GtkWidget* resolve_btn = NULL;
   GtkWidget* stop_btn = NULL;
   GtkWidget* console = NULL;
   GtkWidget* menu_bar = NULL;
-  PangoAttribute *attr;
-  PangoAttrList *attr_lst;
-  GtkWidget *event_box = NULL;
-  GtkWidget *frame = NULL;
   char welcome_msg[256];
-  int i, j, _i, _j;
 
   /* initialiszation of the GTK+ window*/
   gtk_init(&argc, &argv);
@@ -749,75 +741,6 @@ int sdk_gui_init(int argc, char **argv)
   gtk_window_set_title(GTK_WINDOW(MainWindow), "Sudoku Solver");
   gtk_window_set_position(GTK_WINDOW(MainWindow), GTK_WIN_POS_CENTER);
   gtk_window_set_resizable(GTK_WINDOW(MainWindow), FALSE);
-
-  /* pango style */
-  attr = pango_attr_size_new(20 * PANGO_SCALE);
-  attr_lst = pango_attr_list_new();
-  pango_attr_list_insert(attr_lst, attr);
-
-  /* main table of the grid */
-  table1 = gtk_table_new(3,3,TRUE);
-  gtk_container_set_border_width(GTK_CONTAINER(table1), 10);
-
-  for (i=0; i<9; ++i)
-  {
-    frame = gtk_frame_new(NULL);
-    gtk_frame_set_shadow_type(GTK_FRAME(frame), GTK_SHADOW_OUT);
-    gtk_widget_modify_bg (frame, GTK_STATE_NORMAL, &c_dark);
-
-    /* create the secondary tables */
-    table2 = gtk_table_new(3,3,TRUE);
-    gtk_container_add(GTK_CONTAINER(frame), table2);
-    gtk_table_attach(GTK_TABLE(table1), frame, i%3, (i%3)+1, (i/3), (i/3)+1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
-
-    for (j=0; j<9; ++j)
-    {
-      event_box = gtk_event_box_new();
-      txt = gtk_label_new("");
-      gtk_widget_modify_fg(txt, GTK_STATE_NORMAL, &c_black);
-
-      gtk_label_set_attributes(GTK_LABEL(txt), attr_lst);
-      gtk_label_set_justify(GTK_LABEL(txt), GTK_JUSTIFY_CENTER);
-      gtk_widget_set_size_request(event_box, 50, 50);
-
-      _i =(i/3)*3 + ((j/3));
-      _j = (i%3)*3 + ((j%3));
-      sdk_grid[_i][_j].widget = txt;
-      sdk_grid[_i][_j].event_box = event_box;
-      sdk_grid[_i][_j].i = _i;
-      sdk_grid[_i][_j].j = _j;
-
-      GTK_WIDGET_SET_FLAGS (event_box,GTK_CAN_FOCUS);
-
-      /* set the background of each event-box */
-      gtk_widget_modify_bg (event_box, GTK_STATE_NORMAL, &c_white);
-      sdk_grid[_i][_j].color = &c_white;
-      if (i%2) {
-        if (j%2) {
-          gtk_widget_modify_bg (event_box, GTK_STATE_NORMAL, &c_light_gray);
-          sdk_grid[_i][_j].color = &c_light_gray;
-        }
-      } else {
-        if (! (j%2)) {
-          gtk_widget_modify_bg (event_box, GTK_STATE_NORMAL, &c_light_gray);
-          sdk_grid[_i][_j].color = &c_light_gray;
-        }
-      }
-
-      gtk_container_add(GTK_CONTAINER(event_box), txt);
-      gtk_table_attach(GTK_TABLE(table2), event_box, j%3, (j%3)+1, j/3, (j/3)+1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
-
-      /* add signals to the event_box */
-      g_signal_connect(G_OBJECT(event_box), "button_press_event", G_CALLBACK(button_press), (gpointer) &sdk_grid[_i][_j]);
-      g_signal_connect(G_OBJECT(event_box), "key_press_event", G_CALLBACK(key_press), (gpointer) &sdk_grid[_i][_j]);
-
-      /* signal connections not needed */
-      //      g_signal_connect(G_OBJECT(event_box), "focus_in_event", G_CALLBACK(focus_in_event), NULL);
-      //      g_signal_connect(G_OBJECT(event_box), "focus_out_event", G_CALLBACK(focus_out_event), NULL);
-    }
-  }
-
-
 
   vbox = gtk_vbox_new(FALSE, 0);
   hbox = gtk_hbox_new(FALSE, 0);
@@ -844,6 +767,8 @@ int sdk_gui_init(int argc, char **argv)
   gtk_container_add(GTK_CONTAINER(play_panel), stop_btn);
   gtk_container_add(GTK_CONTAINER(play_panel), time_elapsed);
 
+  /* grid */
+  grid = sdk_gui_init_grid(sdk_grid);
 
   scroll = gtk_scrolled_window_new(NULL, NULL);
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scroll),
@@ -852,12 +777,13 @@ int sdk_gui_init(int argc, char **argv)
   console = gtk_text_view_new();
   console_buff = gtk_text_view_get_buffer(GTK_TEXT_VIEW(console));
 
-  sprintf(welcome_msg, "Application launched !\nWelcome to the Sudoku Solver version %s\n", SDK_VERSION);
+  sprintf(welcome_msg, "*** Application launched ***\nWelcome to the Sudoku Solver version %s.\nProgram created by Sylvain DIDELOT\n\
+-------------------------------------------------------------------\n", SDK_VERSION);
   appendConsole(welcome_msg);
   gtk_container_add (GTK_CONTAINER (scroll), GTK_WIDGET (console));
 
   gtk_box_pack_start (GTK_BOX (vbox), menu_bar, FALSE, FALSE, 0);
-  gtk_box_pack_start (GTK_BOX (vbox), table1, FALSE, FALSE, 2);
+  gtk_box_pack_start (GTK_BOX (vbox), grid, FALSE, FALSE, 2);
   gtk_box_pack_start (GTK_BOX (vbox), edit_panel, FALSE, FALSE, 2);
   gtk_box_pack_start (GTK_BOX (vbox), play_panel, FALSE, FALSE, 2);
   gtk_box_pack_start (GTK_BOX (vbox), scroll, TRUE, TRUE, 0);

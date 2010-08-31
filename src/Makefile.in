@@ -53,7 +53,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_sdk_resolver_OBJECTS = sdk_resolver-sdk_resolver.$(OBJEXT) \
 	sdk_resolver-sdk_gui.$(OBJEXT) sdk_resolver-main.$(OBJEXT) \
-	sdk_resolver-sdk_sidebar.$(OBJEXT)
+	sdk_resolver-sdk_sidebar.$(OBJEXT) \
+	sdk_resolver-sdk_grid.$(OBJEXT)
 sdk_resolver_OBJECTS = $(am_sdk_resolver_OBJECTS)
 sdk_resolver_DEPENDENCIES =
 sdk_resolver_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
@@ -221,7 +222,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-sdk_resolver_SOURCES = sdk_resolver.c sdk_gui.c main.c sdk_sidebar.c
+sdk_resolver_SOURCES = sdk_resolver.c sdk_gui.c main.c sdk_sidebar.c sdk_grid.c
 sdk_resolver_CFLAGS = @GTK_CFLAGS@ @GTK_ENABLE@
 sdk_resolver_LDADD = @GTK_LIBS@
 CLEANFILES = *~
@@ -313,6 +314,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sdk_resolver-main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sdk_resolver-sdk_grid.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sdk_resolver-sdk_gui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sdk_resolver-sdk_resolver.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sdk_resolver-sdk_sidebar.Po@am__quote@
@@ -393,6 +395,20 @@ sdk_resolver-sdk_sidebar.obj: sdk_sidebar.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sdk_sidebar.c' object='sdk_resolver-sdk_sidebar.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(sdk_resolver_CFLAGS) $(CFLAGS) -c -o sdk_resolver-sdk_sidebar.obj `if test -f 'sdk_sidebar.c'; then $(CYGPATH_W) 'sdk_sidebar.c'; else $(CYGPATH_W) '$(srcdir)/sdk_sidebar.c'; fi`
+
+sdk_resolver-sdk_grid.o: sdk_grid.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(sdk_resolver_CFLAGS) $(CFLAGS) -MT sdk_resolver-sdk_grid.o -MD -MP -MF $(DEPDIR)/sdk_resolver-sdk_grid.Tpo -c -o sdk_resolver-sdk_grid.o `test -f 'sdk_grid.c' || echo '$(srcdir)/'`sdk_grid.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/sdk_resolver-sdk_grid.Tpo $(DEPDIR)/sdk_resolver-sdk_grid.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sdk_grid.c' object='sdk_resolver-sdk_grid.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(sdk_resolver_CFLAGS) $(CFLAGS) -c -o sdk_resolver-sdk_grid.o `test -f 'sdk_grid.c' || echo '$(srcdir)/'`sdk_grid.c
+
+sdk_resolver-sdk_grid.obj: sdk_grid.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(sdk_resolver_CFLAGS) $(CFLAGS) -MT sdk_resolver-sdk_grid.obj -MD -MP -MF $(DEPDIR)/sdk_resolver-sdk_grid.Tpo -c -o sdk_resolver-sdk_grid.obj `if test -f 'sdk_grid.c'; then $(CYGPATH_W) 'sdk_grid.c'; else $(CYGPATH_W) '$(srcdir)/sdk_grid.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/sdk_resolver-sdk_grid.Tpo $(DEPDIR)/sdk_resolver-sdk_grid.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sdk_grid.c' object='sdk_resolver-sdk_grid.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(sdk_resolver_CFLAGS) $(CFLAGS) -c -o sdk_resolver-sdk_grid.obj `if test -f 'sdk_grid.c'; then $(CYGPATH_W) 'sdk_grid.c'; else $(CYGPATH_W) '$(srcdir)/sdk_grid.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

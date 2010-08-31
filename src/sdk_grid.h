@@ -1,12 +1,12 @@
 /*
  * =====================================================================================
  *
- *       Filename:  sdk_sidebar.h
+ *       Filename:  sdk_grid.h
  *
- *    Description:  Side bar of the Sudoku Resolver application.
+ *    Description:
  *
  *        Version:  1.0
- *        Created:  08/31/2010 11:40:24 AM
+ *        Created:  08/31/2010 07:44:05 PM
  *       Revision:  none
  *       Compiler:  gcc
  *
@@ -20,20 +20,8 @@
 #define __SDK_SIDEBAR_H
 #ifdef GTK_ENABLE
 
-struct sdk_event_list_s
-{
-  int i;
-  int j;
-  int value;
+GtkWidget* sdk_gui_init_grid(struct sdk_grid_entry_s grid[][9]);
 
-  struct sdk_event_list_s* next;
-  struct sdk_event_list_s* prev;
-};
-
-GtkWidget* sdk_gui_init_sidebar();
-
-void sdk_gui_sidebar_add_event(int i, int j, int value);
-void sdk_gui_sidebar_refresh_list();
 
 #endif
 #endif

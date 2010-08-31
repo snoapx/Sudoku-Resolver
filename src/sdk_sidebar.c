@@ -16,12 +16,19 @@
  * =====================================================================================
  */
 
-#include <gtk/gtk.h>
-#include "sdk_colors.h"
-
 #ifdef GTK_ENABLE
 
+#include <gtk/gtk.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "sdk_colors.h"
+#include "sdk_sidebar.h"
+
 #define SDK_NB_VISBLE_STEPS 15
+
+static struct sdk_event_list_s* event_list = NULL;
+static struct sdk_event_list_s* last_event = NULL;
+static int nb_event = 0;
 
 static GtkWidget* grid_events[SDK_NB_VISBLE_STEPS];
 
@@ -42,7 +49,7 @@ GtkWidget* sdk_gui_init_sidebar()
   frame = gtk_frame_new("Game panel");
   gtk_container_set_border_width(GTK_CONTAINER(frame), 10);
   gtk_widget_set_size_request(frame, 200, -1);
-  gtk_frame_set_label_align (frame, 0.5, 0.5);
+  gtk_frame_set_label_align (GTK_FRAME(frame), 0.5, 0.5);
 
   table = gtk_table_new(SDK_NB_VISBLE_STEPS+1, 1, TRUE);
   gtk_container_add(GTK_CONTAINER(frame), table);
@@ -65,12 +72,55 @@ GtkWidget* sdk_gui_init_sidebar()
     gtk_container_add(GTK_CONTAINER(frame_event), grid_event_box);
     gtk_table_attach(GTK_TABLE(table), frame_event, 0, 1, i, i+1, GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
 
-    grid_events[i] = grid_event;
+    grid_events[i-1] = grid_event;
   }
+
+//  sdk_gui_sidebar_add_event(1, 1, 1);
+//  sdk_gui_sidebar_add_event(2, 2, 2);
+//  sdk_gui_sidebar_add_event(3, 3, 3);
+
+  sdk_gui_sidebar_refresh_list();
 
   return frame;
 }
 
+
+void sdk_gui_sidebar_refresh_list() {
+  struct sdk_event_list_s* tmp = last_event;
+  int nb = SDK_NB_VISBLE_STEPS;
+  char line[256];
+
+  while(tmp && nb)
+  {
+    sprintf(line, "[i=%d][j=%d] : value=%d", tmp->i, tmp->j, tmp->value);
+    gtk_label_set_text(GTK_LABEL(grid_events[SDK_NB_VISBLE_STEPS-nb]), line);
+    --nb;
+
+    tmp = tmp->prev;
+  }
+}
+
+void sdk_gui_sidebar_add_event(int i, int j, int value)
+{
+  struct sdk_event_list_s *event = malloc(sizeof(struct sdk_event_list_s));
+
+  event->i = i;
+  event->j = j;
+  event->value = value;
+  event->next = NULL;
+
+  /* empty list */
+  if (event_list == NULL)
+  {
+    event_list = event;
+    event->prev = NULL;
+  } else {
+    event->prev = last_event;
+  }
+
+  last_event = event;
+  ++nb_event;
+}
 
 
 #endif
