@@ -446,8 +446,13 @@ static void showManual(gpointer callback_data, guint callback_action, GtkWidget 
 timeout_handler(gpointer widget)
 {
   char line[256];
+  int seconds = (int) g_timer_elapsed(timer, NULL);
 
-  sprintf(line, "Time elapsed : %d seconds", (int) g_timer_elapsed(timer, NULL));
+  if (seconds <= 60)
+    sprintf(line, "Time elapsed : %d seconds", seconds);
+  else
+    sprintf(line, "Time elapsed : %d minutes %d seconds", seconds/60, seconds%60);
+
   gtk_label_set_text(GTK_LABEL(time_elapsed), line);
   return TRUE;
 }
@@ -500,6 +505,7 @@ static void togglePanel(enum sdk_program_mode mode)
   } else {
     /* check if the sudoku has a solution */
     int nb_solutions = 0;
+    sdk_gui_sidebar_reset_errors();
     sdk_resolveGrid(sdk_grid, sdk_result, &nb_solutions, NULL, 0);
     if (nb_solutions != 1)
     {
@@ -507,6 +513,10 @@ static void togglePanel(enum sdk_program_mode mode)
       showDialogBox(NULL, SDK_ERR_NO_SOLUTION, GTK_MESSAGE_ERROR );
       return;
     }
+
+    sdk_gui_sidebar_reset();
+    sdk_gui_sidebar_refresh_list();
+    sdk_gui_check_constraints();
 
     appendConsole("Switched to playing mode\n");
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(play_grid), 1);
@@ -627,7 +637,8 @@ void sdk_gui_check_constraints()
     entry->isBase = 1; \
   else \
     entry->isBase = 0; \
-  sdk_gui_sidebar_add_event(entry->i, entry->j, x, entry->value); \
+  if (playing_mode) \
+    sdk_gui_sidebar_add_event(entry->i, entry->j, x, entry->value); \
   entry->value = x; \
   sdk_gui_check_constraints(); \
   sdk_gui_sidebar_refresh_list(); \
@@ -658,8 +669,9 @@ void key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
     case GDK_Delete :
       if (entry->isBase == 1 & playing_mode == 1)
         return;
+      if (playing_mode)
+        sdk_gui_sidebar_add_event(entry->i, entry->j, 0, sdk_grid[entry->i][entry->j].value);
       gtk_label_set_text(GTK_LABEL(entry->widget), "");
-      sdk_gui_sidebar_add_event(entry->i, entry->j, 0, sdk_grid[entry->i][entry->j].value);
       sdk_grid[entry->i][entry->j].value = 0;
       sdk_grid[entry->i][entry->j].isBase = 0;
       sdk_gui_check_constraints();

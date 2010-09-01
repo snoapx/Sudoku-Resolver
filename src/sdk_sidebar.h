@@ -39,6 +39,7 @@ void sdk_gui_sidebar_add_event(int i, int j, int value, int old_value);
 void sdk_gui_sidebar_del_event();
 void sdk_gui_sidebar_refresh_list();
 void sdk_gui_sidebar_reset();
+void sdk_gui_sidebar_reset_errors();
 
 #endif
 #endif

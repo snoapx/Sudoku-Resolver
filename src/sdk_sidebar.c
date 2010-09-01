@@ -33,12 +33,27 @@ static struct sdk_event_list_s* last_event = NULL;
 
 static GtkWidget* grid_events[SDK_NB_VISBLE_STEPS];
 static GtkWidget* grid_events_box[SDK_NB_VISBLE_STEPS];
+static GtkWidget* nb_errors_label;
+static int nb_errors = 0;
 
 
 /* grid shown by the application */
 static struct sdk_grid_entry_s (*sdk_grid)[9];
 static struct sdk_grid_entry_s (*sdk_result)[9];
 
+static void updateNbErrors(int i)
+{
+  char line[256];
+  sprintf(line, "You have made %d errors", i);
+
+  gtk_label_set_text(GTK_LABEL(nb_errors_label), line);
+}
+
+void sdk_gui_sidebar_reset_errors()
+{
+  nb_errors = 0;
+  updateNbErrors(0);
+}
 
 void previousStepEvent(GtkWidget *widget, GdkEventKey *event, gpointer data) {
   sdk_gui_sidebar_del_event();
@@ -49,7 +64,6 @@ void previousStepEvent(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 void nextStepEvent(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 
 }
-
 
 GtkWidget* sdk_gui_init_sidebar(struct sdk_grid_entry_s grid[][9], struct sdk_grid_entry_s result[][9])
 {
@@ -73,7 +87,7 @@ GtkWidget* sdk_gui_init_sidebar(struct sdk_grid_entry_s grid[][9], struct sdk_gr
   gtk_widget_set_size_request(frame, 200, -1);
   gtk_frame_set_label_align (GTK_FRAME(frame), 0.5, 0.5);
 
-  table = gtk_table_new(SDK_NB_VISBLE_STEPS+1, 1, TRUE);
+  table = gtk_table_new(SDK_NB_VISBLE_STEPS+2, 1, TRUE);
   gtk_container_add(GTK_CONTAINER(frame), table);
 
   hbox = gtk_hbox_new(FALSE, 0);
@@ -98,6 +112,10 @@ GtkWidget* sdk_gui_init_sidebar(struct sdk_grid_entry_s grid[][9], struct sdk_gr
     grid_events_box[i-1] = grid_event_box;
   }
 
+  nb_errors_label = gtk_label_new(NULL);
+  nb_errors = 0;
+  updateNbErrors(nb_errors);
+  gtk_table_attach(GTK_TABLE(table), nb_errors_label, 0, 1, SDK_NB_VISBLE_STEPS+2, SDK_NB_VISBLE_STEPS+2+1, GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
 
   /* signals */
   g_signal_connect(G_OBJECT(prev), "clicked", G_CALLBACK(previousStepEvent), NULL);
@@ -108,12 +126,17 @@ GtkWidget* sdk_gui_init_sidebar(struct sdk_grid_entry_s grid[][9], struct sdk_gr
 
 
 void sdk_gui_sidebar_reset() {
-  struct sdk_event_list_s* tmp = last_event;
+  struct sdk_event_list_s* del = event_list;
+  struct sdk_event_list_s* tmp = NULL;
 
-  while(tmp) {
-    free(tmp);
+  while(del) {
+    tmp = del->next;
+    free(del);
+    del = tmp;
   }
 
+  event_list = NULL;
+  last_event = NULL;
 }
 
 void sdk_gui_sidebar_refresh_list() {
@@ -140,6 +163,7 @@ void sdk_gui_sidebar_refresh_list() {
   while(nb)
   {
     gtk_label_set_text(GTK_LABEL(grid_events[SDK_NB_VISBLE_STEPS-nb]), "");
+    gtk_widget_modify_bg (grid_events_box[SDK_NB_VISBLE_STEPS-nb], GTK_STATE_NORMAL, &c_white);
     --nb;
   }
 }
@@ -157,10 +181,10 @@ void sdk_gui_sidebar_del_event() {
   if (last_event->old_value)
   {
     sprintf(line, "%d", last_event->old_value);
-    gtk_label_set_text(GTK_LABEL(sdk_grid[last_event->i][last_event->j].widget), line); \
+    gtk_label_set_text(GTK_LABEL(sdk_grid[last_event->i][last_event->j].widget), line);
   }
   else
-    gtk_label_set_text(GTK_LABEL(sdk_grid[last_event->i][last_event->j].widget), ""); \
+    gtk_label_set_text(GTK_LABEL(sdk_grid[last_event->i][last_event->j].widget), "");
 
 
   free(last_event);
@@ -181,8 +205,26 @@ void sdk_gui_sidebar_add_event(int i, int j, int value, int old_value) {
   if (last_event) {
     if ( (last_event->i == i) &&
         (last_event->j == j) ) {
-      last_event->value = value;
-      last_event->old_value = old_value;
+      if (value == 0)
+      {
+        sdk_gui_sidebar_del_event();
+        sdk_gui_sidebar_refresh_list();
+        sdk_gui_check_constraints();
+        return;
+      }
+
+      if (last_event->value != value)
+      {
+        last_event->value = value;
+        last_event->old_value = old_value;
+
+        /* check errors */
+        if (last_event->value != sdk_result[last_event->i][last_event->j].value) {
+          ++nb_errors;
+          updateNbErrors(nb_errors);
+        }
+      }
+
       return;
     }
   }
@@ -205,6 +247,12 @@ void sdk_gui_sidebar_add_event(int i, int j, int value, int old_value) {
   }
 
   last_event = event;
+
+  /* check errors */
+  if (last_event->value != sdk_result[last_event->i][last_event->j].value) {
+    ++nb_errors;
+    updateNbErrors(nb_errors);
+  }
 }
 
 
